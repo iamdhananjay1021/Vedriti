@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #FAF7F2;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F5EFE7;
+  --border-color: #EFE7DD;
+  --border-subtle: #F3ECE1;
+  --text-primary: #2A170F;
+  --text-secondary: #786B60;
+  --text-muted: #9E9185;
+  --saffron: #C65D24;
+  --saffron-light: #FDF2E9;
+  --gold: #D4AF37;
+  --green: #15803D;
+  --green-bg: #DCFCE7;
+  --red: #DC2626;
+  --red-bg: #FEF2F2;
+}
+
+html.dark, .dark {
+  --bg-primary: #0C0907;
+  --bg-surface: #15100C;
+  --bg-card: #1D1612;
+  --bg-hover: #261D17;
+  --border-color: #33261D;
+  --border-subtle: #2A1F18;
+  --text-primary: #F8EFE6;
+  --text-secondary: #B8A89A;
+  --text-muted: #7E7064;
+  --saffron: #E06E2E;
+  --saffron-light: #2A1B12;
+  --gold: #E5BE4A;
+  --green: #22C55E;
+  --green-bg: #14291A;
+  --red: #EF4444;
+  --red-bg: #2B1515;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar for sleek luxury portal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
