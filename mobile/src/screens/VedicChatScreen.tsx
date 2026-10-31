@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
   Platform,
   Alert,
   Share,
@@ -28,7 +27,9 @@ import {
 import { AppBackground } from '../components/common/AppBackground';
 import { THEME } from '../constants/theme';
 import { queryVedicAi, queryVedicAiAsync, VedicAiResponse } from '../services/vedicAiService';
-import { whatsappService } from '../services/whatsappService';
+import { useContact } from '../hooks/useContact';
+import { useKeyboardInset } from '../hooks/useKeyboardInset';
+import { AppHeader, HeaderIconButton } from '../components/common/AppHeader';
 import { useAuth } from '../context/AuthContext';
 
 export interface ChatMessage {
@@ -68,6 +69,7 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
   onSelectPujaById,
 }) => {
   const { user } = useAuth();
+  const contact = useContact();
   const [chatMode, setChatMode] = useState<'ai' | 'acharya'>('ai');
   const [inputText, setInputText] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -75,10 +77,19 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
     () => `VR-DEVOTEE-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`
   );
   const scrollViewRef = useRef<ScrollView>(null);
+  const { inset } = useKeyboardInset();
+
+  useEffect(() => {
+    if (inset > 0) {
+      const t = setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 120);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [inset]);
 
   const initialGreeting = user?.name
-    ? `हरि ॐ **${user.name} जी** (${user.gotra || 'वैदिक गोत्र'})! मैं वेदरीति का **वेदऋषि AI** हूँ। आप आगामी त्योहार (धनतेरस, दीपावली, छठ), शुभ मुहूर्त, जन्म-कुंडली दोष, अथवा पूजा विधि के संबंध में कोई भी जिज्ञासा पूछ सकते हैं।`
-    : 'हरि ॐ! मैं वेदरीति का **वेदऋषि AI** हूँ। आप आगामी त्योहार (धनतेरस, दीपावली, छठ), शुभ मुहूर्त, जन्म-कुंडली दोष, अथवा पूजा विधि के संबंध में कोई भी जिज्ञासा पूछ सकते हैं।';
+    ? `हरि ॐ ${user.name} जी! मैं VedRit का वेदऋषि AI हूँ। आप आगामी त्योहार (धनतेरस, दीपावली, छठ), शुभ मुहूर्त, जन्म-कुंडली दोष, अथवा पूजा विधि के संबंध में कोई भी जिज्ञासा पूछ सकते हैं।`
+    : 'हरि ॐ! मैं VedRit का वेदऋषि AI हूँ। आप आगामी त्योहार (धनतेरस, दीपावली, छठ), शुभ मुहूर्त, जन्म-कुंडली दोष, अथवा पूजा विधि के संबंध में कोई भी जिज्ञासा पूछ सकते हैं।';
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -144,7 +155,6 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
     setIsThinking(true);
 
     if (chatMode === 'acharya') {
-      // Connect to WhatsApp Business directly
       setTimeout(() => {
         setIsThinking(false);
         const acharyaReply: ChatMessage = {
@@ -162,7 +172,6 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
       return;
     }
 
-    // Process with genuine Vedic AI Engine
     (async () => {
       try {
         const devoteeContext = {
@@ -214,7 +223,7 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
   const handleActionClick = (action: ChatMessage['action']) => {
     if (!action) return;
     if (action.type === 'whatsapp') {
-      whatsappService.chatWithAcharya('Chat Guidance Consultation');
+      contact.chat('Pranam Pandit Ji, I need guidance.');
     } else if (action.type === 'puja' && onNavigateTab) {
       if (action.targetId && onSelectPujaById) {
         onSelectPujaById(action.targetId);
@@ -238,7 +247,7 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
 
   const handleShareMessage = async (msg: ChatMessage) => {
     try {
-      let shareContent = `🕉️ वेदरीति (VedRiti) - वैदिक ज्योतिष व परामर्श 🕉️\n\n${msg.text}`;
+      let shareContent = `🕉️ VedRit - वैदिक ज्योतिष व परामर्श 🕉️\n\n${msg.text}`;
       if (msg.sanskritVerse) {
         shareContent += `\n\n📜 श्लोक: ${msg.sanskritVerse}`;
       }
@@ -252,64 +261,28 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
         title: 'वेदरीति वैदिक परामर्श',
       });
     } catch (e) {
-      // Ignored
     }
   };
 
   return (
     <AppBackground variant="golden">
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Luxury Enterprise Chat Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            {onBackPress && (
-              <TouchableOpacity onPress={onBackPress} style={styles.backBtn} activeOpacity={0.7}>
-                <ChevronLeft size={20} color={THEME.colors.headingDeep} />
-              </TouchableOpacity>
-            )}
+      <View style={[styles.container, { paddingBottom: inset }]}>
+        <AppHeader
+          title="Vedic AI"
+          showBack={Boolean(onBackPress)}
+          onBackPress={onBackPress}
+          rightActions={
+            <>
+              <HeaderIconButton onPress={handleResetSession} label="New consultation">
+                <RotateCcw size={17} color={THEME.colors.heading} />
+              </HeaderIconButton>
+              <HeaderIconButton onPress={() => contact.chat('Pranam Pandit Ji, I have a question.')} label="Message Pandit Ji on WhatsApp">
+                <MessageCircle size={18} color="#15803D" />
+              </HeaderIconButton>
+            </>
+          }
+        />
 
-            <View style={styles.rishiAvatar}>
-              <Flame size={17} color="#D4AF37" />
-            </View>
-
-            <View>
-              <View style={styles.botTitleRow}>
-                <Text style={styles.botName}>वेदऋषि AI</Text>
-                <View style={styles.verifiedBadge}>
-                  <ShieldCheck size={9} color="#15803D" />
-                  <Text style={styles.verifiedText}>शास्त्रसम्मत</Text>
-                </View>
-              </View>
-              <Text style={styles.botStatus}>Online • Kashi Sanctum Intelligence</Text>
-            </View>
-          </View>
-
-          {/* Header Action Buttons */}
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              onPress={handleResetSession}
-              activeOpacity={0.8}
-              style={styles.iconHeaderBtn}
-              accessibilityLabel="New Consultation"
-            >
-              <RotateCcw size={14} color="#7E7266" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => whatsappService.chatWithAcharya('Live Spiritual Chat')}
-              activeOpacity={0.8}
-              style={styles.waHeaderBtn}
-            >
-              <MessageCircle size={13} color="#22C55E" />
-              <Text style={styles.waHeaderText}>WhatsApp</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Dual Mode Switcher: AI Assistant vs Acharya Ji */}
         <View style={styles.modeToggleRow}>
           <TouchableOpacity
             onPress={() => setChatMode('ai')}
@@ -334,7 +307,6 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Quick Prompt Suggestions */}
         <View style={styles.quickPromptSection}>
           <ScrollView
             horizontal
@@ -354,7 +326,6 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* Chat History Messages */}
         <ScrollView
           ref={scrollViewRef}
           onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
@@ -372,14 +343,12 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
                   isUser ? styles.messageRowUser : styles.messageRowAi,
                 ]}
               >
-                {/* Message Bubble */}
                 <View
                   style={[
                     styles.messageBubble,
                     isUser ? styles.userBubble : styles.aiBubble,
                   ]}
                 >
-                  {/* Top Bar inside AI Bubble */}
                   {!isUser && (
                     <View style={styles.aiBubbleTopRow}>
                       {msg.shastraRef ? (
@@ -408,19 +377,16 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
                     </View>
                   )}
 
-                  {/* Sanskrit Verse Card */}
                   {!isUser && msg.sanskritVerse && (
                     <View style={styles.sanskritVerseCard}>
                       <Text style={styles.sanskritVerseText}>{msg.sanskritVerse}</Text>
                     </View>
                   )}
 
-                  {/* Main Answer Body */}
                   <Text style={[styles.messageText, isUser ? styles.userText : styles.aiText]}>
                     {msg.text}
                   </Text>
 
-                  {/* Remedy Highlight Box */}
                   {!isUser && msg.remedy && (
                     <View style={styles.remedyBox}>
                       <Text style={styles.remedyHeading}>🌿 शास्त्रसम्मत सरल उपाय:</Text>
@@ -428,7 +394,6 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
                     </View>
                   )}
 
-                  {/* Action Button */}
                   {!isUser && msg.action && msg.action.title && (
                     <TouchableOpacity
                       onPress={() => handleActionClick(msg.action)}
@@ -452,7 +417,6 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
                   </Text>
                 </View>
 
-                {/* Follow up Prompts */}
                 {!isUser && msg.followUps && msg.followUps.length > 0 && (
                   <View style={styles.followUpsContainer}>
                     {msg.followUps.map((fu, i) => (
@@ -471,7 +435,6 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
             );
           })}
 
-          {/* Thinking / Typing Animation State */}
           {isThinking && (
             <View style={styles.thinkingRow}>
               <View style={styles.thinkingBubble}>
@@ -484,7 +447,6 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
           )}
         </ScrollView>
 
-        {/* Input Bar */}
         <View style={styles.inputBarWrapper}>
           <View style={styles.inputContainer}>
             <TextInput
@@ -514,7 +476,7 @@ export const VedicChatScreen: React.FC<VedicChatScreenProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </AppBackground>
   );
 };

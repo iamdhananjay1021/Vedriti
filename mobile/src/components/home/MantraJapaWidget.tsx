@@ -50,10 +50,10 @@ export const MantraJapaWidget: React.FC = () => {
             <View style={styles.flameIconBox}>
               <Flame size={14} color="#C65D24" />
             </View>
-            <div>
+            <View>
               <Text style={styles.titleText}>Digital Japa Mala & Chants</Text>
               <Text style={styles.subtitleText}>108 Sacred Beads Daily Sadhana</Text>
-            </div>
+            </View>
           </View>
           <View style={styles.targetPill}>
             <Text style={styles.targetText}>Target: 108</Text>

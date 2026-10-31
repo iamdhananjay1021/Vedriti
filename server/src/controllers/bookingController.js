@@ -1,280 +1,208 @@
 import { z } from 'zod';
+import mongoose from 'mongoose';
 import { Booking } from '../models/Booking.js';
 import { Puja } from '../models/Puja.js';
-import { VEDIC_CONSTANTS } from '../config/constants.js';
-import { AppError } from '../middlewares/errorHandler.js';
-import { SankalpGeneratorService } from '../services/sankalpGeneratorService.js';
-import { WhatsAppNotificationService } from '../services/whatsappService.js';
-import { isDatabaseConnected } from '../config/db.js';
-import { inMemoryStore } from '../services/inMemoryStore.js';
+import { getSettings } from '../models/Settings.js';
+import { AppError, asyncHandler } from '../middlewares/errorHandler.js';
+import { reserveSlot, releaseSlot } from '../services/slotService.js';
+import { attachPaymentLink, refreshFromGateway } from '../services/paymentService.js';
+import { generateReference, normalizePhone } from '../utils/ids.js';
+import { DATE_REGEX, TIME_REGEX, istDateTimeToEpoch } from '../utils/time.js';
+import { CONSULTATION_MODES, ID_PREFIX, PUJA_MODES } from '../config/constants.js';
 
-export const CreateBookingSchema = z.object({
-  pujaId: z.string().optional(),
-  pujaSlug: z.string().optional(),
-  packageId: z.string().optional(),
-  devoteeName: z.string().min(2, 'यजमान का नाम आवश्यक है'),
-  gotra: z.string().min(2, 'गोत्र आवश्यक है'),
-  phone: z.string().min(10, 'मान्य मोबाइल नंबर आवश्यक है'),
-  familyMembers: z.array(z.string()).optional().default([]),
-  date: z.string().min(4, 'शुभ तिथि आवश्यक है'),
-  timeSlot: z.string().min(2, 'मुहूर्त समय आवश्यक है'),
-  address: z.string().min(5, 'वितरण / संकल्प स्थान पता आवश्यक है'),
-  pinCode: z.string().min(6, '6-अंकीय पिन कोड आवश्यक है'),
-  usePunyaPoints: z.boolean().optional().default(false),
-  couponCode: z.string().optional(),
-  paymentMethod: z.enum(['UPI', 'CARD', 'NETBANKING', 'COD']).default('UPI'),
+const MAX_UNPAID_ACTIVE = 5;
+const VISIT_MODES = ['AT_HOME'];
+
+export const CreateBookingSchema = z
+  .object({
+    serviceType: z.enum(['PUJA', 'CONSULTATION']),
+    pujaId: z.string().optional(),
+    packageType: z.enum(['PANDIT_ONLY', 'WITH_SAMAGRI']).optional(),
+    mode: z.enum([...PUJA_MODES, ...CONSULTATION_MODES]),
+    date: z.string().regex(DATE_REGEX, 'Please select a valid date'),
+    startTime: z.string().regex(TIME_REGEX, 'Please select a valid slot'),
+    devoteeName: z.string().trim().min(2, 'Devotee name is required').max(80),
+    phone: z.string().trim().min(10).max(16),
+    gotra: z.string().trim().max(60).optional().default(''),
+    familyMembers: z.array(z.string().trim().min(1).max(80)).max(20).optional().default([]),
+    sankalpNote: z.string().trim().max(1000).optional().default(''),
+    address: z.string().trim().max(300).optional().default(''),
+    city: z.string().trim().max(80).optional().default(''),
+    pinCode: z.string().trim().optional().default(''),
+    paymentMethod: z.enum(['ONLINE', 'PAY_LATER']),
+  })
+  .superRefine((v, ctx) => {
+    if (v.serviceType === 'PUJA' && !v.pujaId) ctx.addIssue({ code: 'custom', path: ['pujaId'], message: 'Please select a puja' });
+    if (v.serviceType === 'PUJA' && !v.packageType) ctx.addIssue({ code: 'custom', path: ['packageType'], message: 'Please select a package' });
+    if (v.serviceType === 'PUJA' && !PUJA_MODES.includes(v.mode)) ctx.addIssue({ code: 'custom', path: ['mode'], message: 'Invalid puja mode' });
+    if (v.serviceType === 'CONSULTATION' && !CONSULTATION_MODES.includes(v.mode)) ctx.addIssue({ code: 'custom', path: ['mode'], message: 'Invalid consultation mode' });
+    if (VISIT_MODES.includes(v.mode)) {
+      if (v.address.length < 5) ctx.addIssue({ code: 'custom', path: ['address'], message: 'Full address is required for puja at home' });
+      if (!/^[1-9]\d{5}$/.test(v.pinCode)) ctx.addIssue({ code: 'custom', path: ['pinCode'], message: 'Valid 6-digit PIN code is required' });
+    }
+  });
+
+export const CancelSchema = z.object({ reason: z.string().trim().max(300).optional().default('') });
+
+export const serializeBooking = (b) => ({
+  id: b._id.toString(),
+  bookingId: b.bookingId,
+  serviceType: b.serviceType,
+  pujaId: b.puja ? b.puja.toString() : null,
+  title: b.title,
+  packageType: b.packageType,
+  packageName: b.packageName,
+  mode: b.mode,
+  date: b.date,
+  startTime: b.startTime,
+  endTime: b.endTime,
+  durationMinutes: b.durationMinutes,
+  devoteeName: b.devoteeName,
+  phone: b.phone,
+  gotra: b.gotra,
+  familyMembers: b.familyMembers,
+  sankalpNote: b.sankalpNote,
+  address: b.address,
+  city: b.city,
+  pinCode: b.pinCode,
+  amount: b.amount,
+  paymentMethod: b.paymentMethod,
+  paymentStatus: b.paymentStatus,
+  paymentUrl: b.paymentStatus !== 'PAID' && b.status !== 'CANCELLED' ? b.paymentLinkUrl || null : null,
+  status: b.status,
+  meetingLink: b.status === 'CONFIRMED' ? b.meetingLink : '',
+  panditNote: b.panditNote,
+  cancelReason: b.cancelReason,
+  cancelledBy: b.cancelledBy,
+  createdAt: b.createdAt,
 });
 
-/**
- * POST /api/v1/bookings
- * Create new Vedic Puja Sankalp Booking
- */
-export const createBooking = async (req, res, next) => {
-  try {
-    const {
-      pujaId,
-      pujaSlug,
-      packageId,
-      devoteeName,
-      gotra,
-      phone,
-      familyMembers,
-      date,
-      timeSlot,
-      address,
-      pinCode,
-      usePunyaPoints,
-      couponCode,
-      paymentMethod,
-    } = req.body;
-
-    // Look up puja
-    let puja = null;
-    if (isDatabaseConnected()) {
-      if (pujaId) {
-        puja = await Puja.findById(pujaId);
-      } else if (pujaSlug) {
-        puja = await Puja.findOne({ slug: pujaSlug });
-      }
-    } else {
-      puja = inMemoryStore.pujas.find((p) => p._id === pujaId || p.slug === pujaSlug) || inMemoryStore.pujas[0];
-    }
-
-    const pujaName = puja ? puja.name : 'वैदिक महा अनुष्ठान (Vedic Sacred Ritual)';
-    let basePrice = puja ? puja.startingPrice : 2100;
-    let packageName = 'वैदिक विधि संपुटित (Standard Vedic Package)';
-
-    // Package resolution
-    if (puja && packageId && puja.packages) {
-      const selectedPkg = puja.packages.find((p) => p.id === packageId);
-      if (selectedPkg) {
-        basePrice = selectedPkg.price;
-        packageName = selectedPkg.name;
-      }
-    }
-
-    // Punya Points deduction
-    let punyaDiscount = 0;
-    if (usePunyaPoints) {
-      if (req.user && req.user.punyaPoints >= VEDIC_CONSTANTS.PUNYA_POINTS_REDEMPTION_THRESHOLD) {
-        punyaDiscount = VEDIC_CONSTANTS.PUNYA_POINTS_DISCOUNT_AMOUNT;
-        if (typeof req.user.save === 'function') {
-          await req.user.save();
-        }
-      } else if (!req.user) {
-        // Promotional deduction for first booking
-        punyaDiscount = VEDIC_CONSTANTS.PUNYA_POINTS_DISCOUNT_AMOUNT;
-      }
-    }
-
-    // Coupon code deduction
-    let couponDiscount = 0;
-    if (couponCode) {
-      const cleanCode = couponCode.toUpperCase().trim();
-      const validCoupon = VEDIC_CONSTANTS.ACTIVE_COUPONS[cleanCode];
-      if (validCoupon) {
-        couponDiscount = Math.round((basePrice * validCoupon.discountPercent) / 100);
-      }
-    }
-
-    const finalDakshina = Math.max(0, basePrice - punyaDiscount - couponDiscount);
-    const bookingId = `${VEDIC_CONSTANTS.PREFIX_SANKALP}${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const initialTimeline = [
-      {
-        stage: 'SANCTUM_CONSECRATION',
-        title: 'गर्भगृह संकल्प पंजीकरण (Sankalp Registered)',
-        description: 'काशी विश्वनाथ विद्वत परिषद् द्वारा आपका संकल्प गर्भगृह पंजिका में अंकित किया गया।',
-        location: 'Kashi Vishwanath Sanctum, Varanasi',
-        timestamp: new Date(),
-        isCompleted: true,
-      },
-    ];
-
-    const booking = new Booking({
-      bookingId,
-      user: req.userId ? req.userId : undefined,
-      pujaId: puja ? puja._id : undefined,
-      pujaName,
-      packageName,
-      devoteeName,
-      gotra,
-      phone,
-      familyMembers,
-      date,
-      timeSlot,
-      address,
-      pinCode,
-      basePrice,
-      punyaDiscount,
-      couponDiscount,
-      couponCode,
-      finalDakshina,
-      paymentMethod,
-      paymentStatus: paymentMethod === 'COD' ? 'POST_SANKALP_COD' : 'PENDING',
-      sankalpStatus: 'REGISTERED',
-      prasadTracking: {
-        currentStage: 'SANCTUM_CONSECRATION',
-        courierPartner: 'BlueDart Holy Express',
-        awbNumber: `BD-VR-${Math.floor(10000000 + Math.random() * 90000000)}`,
-        estimatedDelivery: '3-4 Business Days',
-        timeline: initialTimeline,
-      },
-    });
-
-    if (isDatabaseConnected()) {
-      await booking.save();
-    } else {
-      inMemoryStore.bookings.set(booking.bookingId, booking);
-    }
-
-    // Generate Consecrated Digital Sankalp Patra
-    const patra = await SankalpGeneratorService.generateForBooking(booking);
-
-    // Send WhatsApp notification
-    await WhatsAppNotificationService.sendBookingVoucher(booking);
-
-    res.status(201).json({
-      success: true,
-      message: 'वैदिक संकल्प सफलतापूर्वक पंजीकृत किया गया! ॐ',
-      data: {
-        bookingId: booking.bookingId,
-        pujaName: booking.pujaName,
-        packageName: booking.packageName,
-        devoteeName: booking.devoteeName,
-        gotra: booking.gotra,
-        familyMembers: booking.familyMembers,
-        date: booking.date,
-        timeSlot: booking.timeSlot,
-        finalDakshina: booking.finalDakshina,
-        paymentStatus: booking.paymentStatus,
-        patraId: patra.patraId,
-        awbNumber: booking.prasadTracking.awbNumber,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
+const findOwnBooking = async (req) => {
+  const booking = await Booking.findOne({ bookingId: req.params.bookingId, user: req.userId });
+  if (!booking) throw new AppError('Booking not found', 404);
+  return booking;
 };
 
-/**
- * GET /api/v1/bookings/:bookingId
- */
-export const getBookingDetails = async (req, res, next) => {
-  try {
-    const bookingId = String(req.params.bookingId);
-    let booking = null;
+export const createBooking = asyncHandler(async (req, res) => {
+  const body = req.body;
+  const settings = await getSettings();
+  const phone = normalizePhone(body.phone);
+  if (!phone) throw new AppError('Please enter a valid 10-digit mobile number', 400);
 
-    if (isDatabaseConnected()) {
-      booking = await Booking.findOne({ bookingId });
-    } else {
-      booking = inMemoryStore.bookings.get(bookingId);
-    }
-
-    if (!booking) {
-      throw new AppError('बुकिंग संदर्भ नहीं मिला (Booking not found)', 404);
-    }
-
-    res.status(200).json({
-      success: true,
-      data: booking,
-    });
-  } catch (error) {
-    next(error);
+  if (body.paymentMethod === 'PAY_LATER' && !settings.allowPayLater) {
+    throw new AppError('Pay later is not available. Please pay online.', 400);
   }
-};
 
-/**
- * GET /api/v1/bookings/my-bookings
- */
-export const getUserBookings = async (req, res, next) => {
+  const unpaidActive = await Booking.countDocuments({
+    user: req.userId,
+    status: { $in: ['PENDING', 'CONFIRMED'] },
+    paymentStatus: { $ne: 'PAID' },
+  });
+  if (unpaidActive >= MAX_UNPAID_ACTIVE) {
+    throw new AppError('You have too many unpaid bookings. Please pay or cancel an existing booking first.', 429);
+  }
+
+  let title;
+  let amount;
+  let durationMinutes;
+  let packageName = '';
+  let pujaRef;
+
+  if (body.serviceType === 'PUJA') {
+    if (!mongoose.isValidObjectId(body.pujaId)) throw new AppError('Puja not found', 404);
+    const puja = await Puja.findOne({ _id: body.pujaId, isActive: true });
+    if (!puja) throw new AppError('This puja is no longer available', 404);
+    if (!puja.modes.includes(body.mode)) throw new AppError('This puja is not available in the selected mode', 400);
+    const pkg = body.packageType === 'WITH_SAMAGRI' ? puja.packages.withSamagri : puja.packages.panditOnly;
+    if (!pkg?.enabled) throw new AppError('Selected package is not available', 400);
+    title = puja.name;
+    amount = pkg.price;
+    durationMinutes = puja.durationMinutes;
+    packageName = pkg.name;
+    pujaRef = puja._id;
+  } else {
+    if (!settings.consultation.enabled) throw new AppError('Consultations are currently unavailable', 400);
+    if (!settings.consultation.modes.includes(body.mode)) throw new AppError('Selected consultation mode is unavailable', 400);
+    title = settings.consultation.title;
+    amount = settings.consultation.fee;
+    durationMinutes = settings.consultation.durationMinutes;
+  }
+
+  const booking = new Booking({
+    bookingId: generateReference(ID_PREFIX.BOOKING),
+    user: req.userId,
+    serviceType: body.serviceType,
+    puja: pujaRef,
+    title,
+    packageType: body.serviceType === 'PUJA' ? body.packageType : '',
+    packageName,
+    mode: body.mode,
+    date: body.date,
+    startTime: body.startTime,
+    endTime: body.startTime,
+    durationMinutes,
+    devoteeName: body.devoteeName,
+    phone,
+    gotra: body.gotra,
+    familyMembers: [...new Set(body.familyMembers)],
+    sankalpNote: body.sankalpNote,
+    address: VISIT_MODES.includes(body.mode) || body.mode === 'IN_PERSON' ? body.address : '',
+    city: body.city,
+    pinCode: VISIT_MODES.includes(body.mode) ? body.pinCode : '',
+    amount,
+    paymentMethod: amount === 0 ? 'PAY_LATER' : body.paymentMethod,
+    paymentStatus: amount === 0 ? 'PAID' : body.paymentMethod === 'PAY_LATER' ? 'PAY_LATER' : 'PENDING',
+    status: 'PENDING',
+  });
+
+  const slot = await reserveSlot({ date: body.date, startTime: body.startTime, durationMinutes, bookingId: booking._id });
+  booking.endTime = slot.endTime;
+
   try {
-    if (isDatabaseConnected()) {
-      const filter = req.userId ? { user: req.userId } : { phone: req.user?.phone };
-      const bookings = await Booking.find(filter).sort({ createdAt: -1 });
-
-      res.status(200).json({
-        success: true,
-        count: bookings.length,
-        data: bookings,
-      });
-    } else {
-      const bookings = Array.from(inMemoryStore.bookings.values());
-      res.status(200).json({
-        success: true,
-        count: bookings.length,
-        data: bookings,
+    await booking.save();
+    if (booking.paymentMethod === 'ONLINE' && booking.paymentStatus === 'PENDING') {
+      await attachPaymentLink('booking', booking, {
+        amount,
+        customer: { name: body.devoteeName, phone, email: req.user.email },
+        description: `${title} - ${body.date} ${body.startTime}`,
       });
     }
   } catch (error) {
-    next(error);
+    await releaseSlot(booking._id);
+    if (!booking.isNew) await Booking.deleteOne({ _id: booking._id });
+    throw error;
   }
-};
 
-/**
- * GET /api/v1/bookings/:bookingId/sankalp-patra
- */
-export const getDigitalSankalpPatra = async (req, res, next) => {
-  try {
-    const bookingId = String(req.params.bookingId);
-    let booking = null;
-    if (isDatabaseConnected()) {
-      booking = await Booking.findOne({ bookingId });
-    } else {
-      booking = inMemoryStore.bookings.get(bookingId);
-    }
+  res.status(201).json({ success: true, data: serializeBooking(booking) });
+});
 
-    if (!booking) {
-      throw new AppError('बुकिंग संदर्भ नहीं मिला', 404);
-    }
+export const listMyBookings = asyncHandler(async (req, res) => {
+  const filter = { user: req.userId };
+  if (req.query.scope === 'upcoming') filter.status = { $in: ['PENDING', 'CONFIRMED'] };
+  if (req.query.scope === 'past') filter.status = { $in: ['COMPLETED', 'CANCELLED'] };
+  const bookings = await Booking.find(filter).sort({ date: -1, startTime: -1 }).limit(100);
+  res.json({ success: true, data: bookings.map(serializeBooking) });
+});
 
-    const patra = await SankalpGeneratorService.generateForBooking(booking);
+export const getMyBooking = asyncHandler(async (req, res) => {
+  const booking = await refreshFromGateway(await findOwnBooking(req));
+  res.json({ success: true, data: serializeBooking(booking) });
+});
 
-    res.status(200).json({
-      success: true,
-      data: patra,
-    });
-  } catch (error) {
-    next(error);
+export const cancelMyBooking = asyncHandler(async (req, res) => {
+  const booking = await findOwnBooking(req);
+  if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
+    throw new AppError('This booking can no longer be cancelled', 400);
   }
-};
-
-/**
- * GET /api/v1/bookings/verify-patra/:qrHash
- * Public endpoint to verify Sankalp Patra via its QR Code hash
- */
-export const verifySankalpQr = async (req, res, next) => {
-  try {
-    const qrHash = String(req.params.qrHash);
-    const patra = await SankalpGeneratorService.verifyQrHash(qrHash);
-
-    res.status(200).json({
-      success: true,
-      verified: true,
-      message: 'सत्यापित वैदिक संकल्प पत्र (Official Consecrated Certificate Verified)',
-      data: patra,
-    });
-  } catch (error) {
-    next(error);
+  const settings = await getSettings();
+  const hoursLeft = (istDateTimeToEpoch(booking.date, booking.startTime) - Date.now()) / 3600000;
+  if (booking.paymentStatus === 'PAID' && hoursLeft < settings.userCancelHours) {
+    throw new AppError(`Paid bookings can be cancelled only ${settings.userCancelHours} hours before the start time. Please contact Pandit Ji.`, 400);
   }
-};
+  booking.status = 'CANCELLED';
+  booking.cancelledBy = 'USER';
+  booking.cancelReason = req.body.reason || 'Cancelled by devotee';
+  await booking.save();
+  await releaseSlot(booking._id);
+  res.json({ success: true, data: serializeBooking(booking) });
+});

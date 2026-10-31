@@ -18,7 +18,7 @@ export const PujaPackageSelector: React.FC<PujaPackageSelectorProps> = ({
   selectedPackageId,
   onSelectPackage,
 }) => {
-  const options = [packages.panditOnly, packages.panditWithSamagri];
+  const options = [packages.panditOnly, packages.panditWithSamagri].filter((p) => p.enabled);
 
   return (
     <View style={styles.container}>
@@ -44,7 +44,6 @@ export const PujaPackageSelector: React.FC<PujaPackageSelectorProps> = ({
               accessibilityState={{ selected: isSelected }}
               accessibilityLabel={`${pkg.name}, ₹${pkg.price}`}
             >
-              {/* Radio Indicator & Header */}
               <View style={styles.cardHeader}>
                 <View style={styles.radioRow}>
                   {isSelected ? (
@@ -62,10 +61,8 @@ export const PujaPackageSelector: React.FC<PujaPackageSelectorProps> = ({
                 </Text>
               </View>
 
-              {/* Tagline */}
               <Text style={styles.packageTagline}>{pkg.tagline}</Text>
 
-              {/* Inclusions Pill / List */}
               <View style={styles.featuresList}>
                 {pkg.features.map((feat, idx) => (
                   <View key={idx} style={styles.featureRow}>

@@ -2,14 +2,12 @@ import { Platform } from 'react-native';
 
 export const THEME = {
   colors: {
-    // Rich Royal Vedic Foundation
     primaryBg: '#FAF6EE',
     parchment: '#FFFDF9',
     cardBg: '#FFFFFF',
     cardTranslucent: 'rgba(255, 255, 255, 0.94)',
     cardTranslucentDark: 'rgba(28, 18, 12, 0.92)',
     
-    // Imperial Vedic Gold & Amber Palette
     gold: '#D4AF37',
     goldLight: '#F7E7B4',
     goldDark: '#996515',
@@ -18,7 +16,6 @@ export const THEME = {
     goldBorder: '#E6D2B2',
     goldBorderSoft: '#EFE3D0',
     
-    // Royal Vermilion, Saffron & Crimson
     primarySaffron: '#C65D24',
     saffronBright: '#E36414',
     deepTerracotta: '#A7471B',
@@ -28,7 +25,6 @@ export const THEME = {
     softPeach: '#FDF6EE',
     softAccentBg: '#F8E8D6',
     
-    // Sanctum Dark & Text Palette
     heading: '#2A170F',
     headingDeep: '#1C0F0A',
     bodyText: '#594D44',
@@ -37,14 +33,12 @@ export const THEME = {
     borderLight: '#F3E9DD',
     overlayIvory: 'rgba(250, 246, 238, 0.45)',
     
-    // Auspicious Green & Accents
     bilvaGreen: '#15803D',
     bilvaGreenLight: '#DCFCE7',
     bilvaGreenBorder: '#86EFAC',
     activeTab: '#C65D24',
     inactiveTab: '#877B70',
     
-    // Royal Obsidian & Gradients Base
     obsidian: '#1A1009',
     sanctumMaroon: '#2B120C',
   },
@@ -81,7 +75,8 @@ export const THEME = {
     },
   },
   typography: {
-    serif: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    serif: Platform.select({ ios: 'System', android: 'sans-serif-medium', default: 'System' }),
+    display: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
     sans: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }),
     sansMedium: Platform.select({ ios: 'System', android: 'sans-serif-medium', default: 'System' }),
     sansLight: Platform.select({ ios: 'System', android: 'sans-serif-light', default: 'System' }),
@@ -93,15 +88,9 @@ export const THEME = {
     },
   },
   brand: {
-    name: 'VedRiti',
-    tagline: 'Sanatan Sanskar & Divine Seva',
+    name: 'VedRit',
+    tagline: 'Pandit Ji • Puja • Kundli',
     subTagline: 'श्रद्धा • संकल्प • सिद्धि',
-    location: 'Kashi Vishwanath Sanctum',
-    experience: '25+ Years Certified Vedic Acharya Parishad',
-    singlePanditTitle: 'आचार्य पं. विद्याधर शास्त्री (काशी पीठाधीश्वर)',
-    phone: '+91 98765 43210',
-    whatsapp: '9876543210',
-    email: 'acharyaji@vedriti.com',
   },
   assets: {
     background: require('../../assets/images/app-background.png'),

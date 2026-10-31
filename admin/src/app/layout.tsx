@@ -14,9 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'VedRiti • Kashi Sanctum Admin Portal',
-  description:
-    'Enterprise Vedic Administration Portal for Puja Sankalp Bookings, Consecrated Store Orders, and Acharya Payouts.',
+  title: 'VedRit • Pandit Ji Puja, Appointment & Kundli',
+  description: 'Book pujas, appointments and kundli consultations directly with Pandit Ji.',
 };
 
 export default function RootLayout({

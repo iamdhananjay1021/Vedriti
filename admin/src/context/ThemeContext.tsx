@@ -1,64 +1,57 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { ThemeMode } from '../types/admin';
+import React, { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
+import type { ThemeMode } from '../lib/types';
 
 interface ThemeContextType {
   theme: ThemeMode;
   toggleTheme: () => void;
-  setTheme: (mode: ThemeMode) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
-  toggleTheme: () => {},
-  setTheme: () => {},
-});
+const STORAGE_KEY = 'vedrit-admin-theme';
+const EVENT = 'vedrit-theme-change';
+
+const ThemeContext = createContext<ThemeContextType>({ theme: 'light', toggleTheme: () => {} });
+
+const readSaved = (): ThemeMode | null => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved === 'dark' || saved === 'light' ? saved : null;
+  } catch {
+    return null;
+  }
+};
+
+const applyTheme = (mode: ThemeMode) => {
+  document.documentElement.classList.toggle('dark', mode === 'dark');
+  window.dispatchEvent(new Event(EVENT));
+};
+
+const subscribe = (callback: () => void) => {
+  window.addEventListener(EVENT, callback);
+  return () => window.removeEventListener(EVENT, callback);
+};
+
+const getSnapshot = (): ThemeMode => (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+const getServerSnapshot = (): ThemeMode => 'light';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<ThemeMode>('dark');
-  const [mounted, setMounted] = useState(false);
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('vedriti-admin-theme') as ThemeMode;
-    if (savedTheme === 'light' || savedTheme === 'dark') {
-      setThemeState(savedTheme);
-      applyTheme(savedTheme);
-    } else {
-      applyTheme('dark');
-    }
-    setMounted(true);
+    const initial = readSaved() ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(initial);
   }, []);
 
-  const applyTheme = (mode: ThemeMode) => {
-    const root = document.documentElement;
-    if (mode === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else {
-      root.classList.add('light');
-      root.classList.remove('dark');
-    }
-  };
-
-  const setTheme = (mode: ThemeMode) => {
-    setThemeState(mode);
-    localStorage.setItem('vedriti-admin-theme', mode);
-    applyTheme(mode);
-  };
-
   const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
+    const next: ThemeMode = theme === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+    } catch {}
   };
 
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
-      <div className={theme === 'dark' ? 'dark' : ''} style={{ minHeight: '100vh' }}>
-        {children}
-      </div>
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
 };
 
 export const useTheme = () => useContext(ThemeContext);

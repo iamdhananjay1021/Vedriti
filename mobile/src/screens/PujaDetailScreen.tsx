@@ -21,14 +21,16 @@ import {
   ShieldCheck,
   Star,
   Flame,
-  Volume2,
 } from 'lucide-react-native';
 import { AppBackground } from '../components/common/AppBackground';
+import { ProductImage } from '../components/common/ProductImage';
 import { PujaPackageSelector } from '../components/puja/PujaPackageSelector';
 import { PujaPreparationAccordion } from '../components/puja/PujaPreparationAccordion';
 import { BookingBottomBar } from '../components/puja/BookingBottomBar';
 import { THEME } from '../constants/theme';
 import { Puja, PujaPackage } from '../data/mockData';
+import { useAppData } from '../context/AppDataContext';
+import { MODE_LABELS } from '../utils/format';
 
 interface PujaDetailScreenProps {
   puja: Puja;
@@ -41,29 +43,20 @@ export const PujaDetailScreen: React.FC<PujaDetailScreenProps> = ({
   onBackPress,
   onBookPuja,
 }) => {
+  const { settings } = useAppData();
   const [selectedPackage, setSelectedPackage] = useState<PujaPackage>(
-    puja.packages.panditWithSamagri
+    puja.packages.panditWithSamagri.enabled ? puja.packages.panditWithSamagri : puja.packages.panditOnly
   );
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Book ${puja.name} on VedRiti: ${puja.subtitle}. Authentic Vedic Vidhi by Kashi Acharyas. Starting at ₹${puja.startingPrice}.`,
+        message: `Book ${puja.name} with ${settings?.panditName || 'Pandit Ji'} on VedRit. Starting at ₹${puja.startingPrice}. https://vedrit.in`,
         title: puja.name,
       });
     } catch {
-      Alert.alert('VedRiti', `Share ${puja.name} with your family.`);
+      Alert.alert('VedRit', `Share ${puja.name} with your family.`);
     }
-  };
-
-  const toggleMantraAudio = () => {
-    setIsAudioPlaying(!isAudioPlaying);
-    Alert.alert(
-      'Vedic Mantra Recitation ॐ',
-      `Chanting ${puja.sanskritMantra || 'Vedic Gayatri Mantra'} by Kashi Vishwanath Acharya Parishad.`,
-      [{ text: 'Om Shanti' }]
-    );
   };
 
   return (
@@ -74,21 +67,14 @@ export const PujaDetailScreen: React.FC<PujaDetailScreenProps> = ({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* A. Hero Image Section */}
           <View style={styles.heroWrapper}>
-            <Image
-              source={puja.image}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
+            <ProductImage source={puja.image} categoryKey="PUJA" seed={puja.category} style={styles.heroImage} iconSize={64} />
 
-            {/* Gradient Overlay for luxury readability */}
             <LinearGradient
               colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.3)']}
               style={StyleSheet.absoluteFill}
             />
 
-            {/* Top Floating Buttons */}
             <View style={styles.topActionsRow}>
               <TouchableOpacity
                 onPress={onBackPress}
@@ -109,16 +95,14 @@ export const PujaDetailScreen: React.FC<PujaDetailScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Floating Kshetra Badge */}
             <View style={styles.heroFloatingBadge}>
               <Sparkles size={11} color="#D4AF37" />
               <Text style={styles.heroBadgeText}>
-                {puja.templeLocation || 'Kashi Kshetra Sanctum'}
+                {puja.modes.map((m) => MODE_LABELS[m]).join(' • ')}
               </Text>
             </View>
           </View>
 
-          {/* B. Puja Information Card */}
           <View style={styles.infoSection}>
             <View style={styles.badgeRow}>
               <View style={styles.categoryPill}>
@@ -130,16 +114,17 @@ export const PujaDetailScreen: React.FC<PujaDetailScreenProps> = ({
                 <Text style={styles.durationPillText}>{puja.duration}</Text>
               </View>
 
-              <View style={styles.ratingPill}>
-                <Star size={10} color="#D4AF37" fill="#D4AF37" />
-                <Text style={styles.ratingPillText}>{puja.rating || 4.98}</Text>
-              </View>
+              {(puja.reviewsCount ?? 0) > 0 ? (
+                <View style={styles.ratingPill}>
+                  <Star size={10} color="#D4AF37" fill="#D4AF37" />
+                  <Text style={styles.ratingPillText}>{puja.rating}</Text>
+                </View>
+              ) : null}
             </View>
 
             <Text style={styles.pujaName}>{puja.name}</Text>
             <Text style={styles.pujaSubtitle}>{puja.subtitle}</Text>
 
-            {/* Sanskrit Mantra Box with Audio Chanting Button */}
             {puja.sanskritMantra && (
               <View style={styles.mantraContainer}>
                 <LinearGradient
@@ -152,16 +137,6 @@ export const PujaDetailScreen: React.FC<PujaDetailScreenProps> = ({
                       <Text style={styles.mantraTagText}>MUKHYA VEDIC MANTRA</Text>
                     </View>
 
-                    <TouchableOpacity
-                      onPress={toggleMantraAudio}
-                      activeOpacity={0.8}
-                      style={styles.audioListenBtn}
-                    >
-                      <Volume2 size={12} color="#F7E7B4" />
-                      <Text style={styles.audioListenText}>
-                        {isAudioPlaying ? 'Playing' : 'Listen Chants'}
-                      </Text>
-                    </TouchableOpacity>
                   </View>
 
                   <Text style={styles.sanskritMantraText}>
@@ -171,18 +146,16 @@ export const PujaDetailScreen: React.FC<PujaDetailScreenProps> = ({
               </View>
             )}
 
-            {/* Verified Acharya Promise Note */}
             <View style={styles.panditNote}>
               <ShieldCheck size={16} color="#A7471B" strokeWidth={2} />
               <View style={{ flex: 1, marginLeft: 8 }}>
                 <Text style={styles.panditNoteTitle}>Authentic Vedic Anushthan</Text>
                 <Text style={styles.panditNoteText}>
-                  Personally conducted by {THEME.brand.singlePanditTitle}. Strictly conforms to Shukla Yajurveda & Grihya Sutras.
+                  Personally conducted by {settings?.panditName || 'Pandit Ji'} with traditional Vedic vidhi.
                 </Text>
               </View>
             </View>
 
-            {/* Suitable Occasions */}
             {puja.suitableOccasions && puja.suitableOccasions.length > 0 ? (
               <View style={styles.occasionsContainer}>
                 <Text style={styles.subHeading}>Suitable Sacred Occasions</Text>
@@ -197,13 +170,11 @@ export const PujaDetailScreen: React.FC<PujaDetailScreenProps> = ({
               </View>
             ) : null}
 
-            {/* Ritual Overview */}
             <View style={styles.descSection}>
               <Text style={styles.subHeading}>Ritual Overview & Vidhi</Text>
               <Text style={styles.descText}>{puja.description}</Text>
             </View>
 
-            {/* Spiritual Significance */}
             {puja.significance ? (
               <View style={styles.descSection}>
                 <Text style={styles.subHeading}>Spiritual Significance & Fruits (Phalashruti)</Text>
@@ -211,7 +182,6 @@ export const PujaDetailScreen: React.FC<PujaDetailScreenProps> = ({
               </View>
             ) : null}
 
-            {/* C. What's Included */}
             <View style={styles.includedCard}>
               <Text style={styles.includedTitle}>What’s Included in This Ritual</Text>
 
@@ -243,34 +213,30 @@ export const PujaDetailScreen: React.FC<PujaDetailScreenProps> = ({
                   </Text>
                   <Text style={styles.includedSub}>
                     {selectedPackage.samagriIncluded
-                      ? 'Pure Cow Ghee, Kashi Gangajal, Hawan Samidha, Kalash, Janeu & Bhimseni Kapur.'
-                      : 'You will arrange the samagri. A comprehensive Vedic checklist is sent on WhatsApp.'}
+                      ? puja.whatIsIncluded.samagriDetails || 'All puja samagri is brought by Pandit Ji.'
+                      : 'You will arrange the samagri. Pandit Ji shares the checklist after booking.'}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* D. Package Selection */}
             <PujaPackageSelector
               packages={puja.packages}
               selectedPackageId={selectedPackage.id}
               onSelectPackage={setSelectedPackage}
             />
 
-            {/* E. How to Prepare Accordion */}
             <PujaPreparationAccordion steps={puja.preparationSteps} />
 
-            {/* F. Availability Notice */}
             <View style={styles.availabilityNotice}>
               <CalendarClock size={14} color={THEME.colors.deepTerracotta} strokeWidth={2} />
               <Text style={styles.availabilityNoticeText}>
-                Exact Muhurat is finalized in consultation with you based on your Janam Rashi & Gotra.
+                Choose a date and time from Pandit Ji’s live availability in the next step.
               </Text>
             </View>
           </View>
         </ScrollView>
 
-        {/* G. Sticky Bottom Booking Bar */}
         <BookingBottomBar
           price={selectedPackage.price}
           packageName={selectedPackage.name}

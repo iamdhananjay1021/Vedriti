@@ -2,75 +2,42 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config/env.js';
 import { User } from '../models/User.js';
 import { AppError } from './errorHandler.js';
-import { isDatabaseConnected } from '../config/db.js';
-import { inMemoryStore } from '../services/inMemoryStore.js';
 
-/**
- * Require valid JWT authentication
- */
+const readToken = (req) => {
+  const header = req.headers.authorization || '';
+  return header.startsWith('Bearer ') ? header.slice(7) : null;
+};
+
 export const requireAuth = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new AppError('प्रवेश हेतु प्रमाणीकरण आवश्यक है (Authentication token required)', 401);
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, config.jwtSecret);
-
-    let user = null;
-    if (isDatabaseConnected()) {
-      user = await User.findById(decoded.userId);
-    } else {
-      for (const u of inMemoryStore.users.values()) {
-        if (u._id === decoded.userId) {
-          user = u;
-          break;
-        }
-      }
-    }
-
-    if (!user) {
-      throw new AppError('भक्त प्रोफ़ाइल प्राप्त नहीं हुई (Devotee record not found)', 401);
-    }
-
+    const token = readToken(req);
+    if (!token) throw new AppError('Please login to continue', 401);
+    const payload = jwt.verify(token, config.jwtSecret);
+    if (payload.role !== 'user') throw new AppError('Please login to continue', 401);
+    const user = await User.findById(payload.sub);
+    if (!user) throw new AppError('Your session has ended. Please login again.', 401);
+    if (user.isBlocked) throw new AppError('This account has been blocked. Please contact support.', 403);
     req.user = user;
-    req.userId = user._id.toString();
+    req.userId = user._id;
     next();
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Optional authentication - allows guests but attaches devotee if token is valid
- */
-export const optionalAuth = async (req, res, next) => {
+export const requireCompleteProfile = (req, res, next) => {
+  if (!req.user?.profileCompleted) {
+    return next(new AppError('Please complete your profile before booking', 428));
+  }
+  next();
+};
+
+export const requireAdmin = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      try {
-        const decoded = jwt.verify(token, config.jwtSecret);
-        let user = null;
-        if (isDatabaseConnected()) {
-          user = await User.findById(decoded.userId);
-        } else {
-          for (const u of inMemoryStore.users.values()) {
-            if (u._id === decoded.userId) {
-              user = u;
-              break;
-            }
-          }
-        }
-        if (user) {
-          req.user = user;
-          req.userId = user._id.toString();
-        }
-      } catch (err) {
-        // Token is invalid/expired - proceed as guest
-      }
-    }
+    const token = readToken(req);
+    if (!token) throw new AppError('Admin login required', 401);
+    const payload = jwt.verify(token, config.jwtSecret);
+    if (payload.role !== 'admin') throw new AppError('Admin access required', 403);
     next();
   } catch (error) {
     next(error);

@@ -5,11 +5,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Linking,
-  Alert,
 } from 'react-native';
 import { X, PhoneCall, MessageSquare, ShieldCheck } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { useContact } from '../../hooks/useContact';
 
 interface SupportModalProps {
   visible: boolean;
@@ -17,26 +16,12 @@ interface SupportModalProps {
 }
 
 export const SupportModal: React.FC<SupportModalProps> = ({ visible, onClose }) => {
-  const handleCall = () => {
-    Linking.openURL(`tel:${THEME.brand.phone}`).catch(() => {
-      Alert.alert('Calling Pandit Ji', `Dial: ${THEME.brand.phone}`);
-    });
-  };
-
-  const handleWhatsApp = () => {
-    const text = encodeURIComponent(
-      `Pranam Acharya Ji, I would like guidance on booking an auspicious Vedic puja with VedRiti.`
-    );
-    Linking.openURL(`whatsapp://send?phone=${THEME.brand.whatsapp}&text=${text}`).catch(() => {
-      Alert.alert(
-        'WhatsApp Support',
-        `Send message to Pandit Ji at ${THEME.brand.phone}`
-      );
-    });
-  };
+  const contact = useContact();
+  const handleCall = contact.call;
+  const handleWhatsApp = () => contact.chat('Pranam Pandit Ji, I would like guidance on booking a puja with VedRit.');
 
   return (
-    <Modal visible={visible} animationType="fade" transparent>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.card}>
           <View style={styles.header}>
@@ -47,10 +32,9 @@ export const SupportModal: React.FC<SupportModalProps> = ({ visible, onClose }) 
           </View>
 
           <Text style={styles.subtitle}>
-            Speak directly with {THEME.brand.singlePanditTitle} for muhurat consulting, personalized rituals, or samagri questions.
+            Speak directly with {contact.panditName} for muhurat, puja booking or samagri questions.
           </Text>
 
-          {/* Action 1: Call */}
           <TouchableOpacity
             onPress={handleCall}
             activeOpacity={0.85}
@@ -59,11 +43,10 @@ export const SupportModal: React.FC<SupportModalProps> = ({ visible, onClose }) 
             <PhoneCall size={18} color="#FFFFFF" />
             <View style={styles.btnTextCol}>
               <Text style={styles.btnTitleWhite}>Direct Call</Text>
-              <Text style={styles.btnDescWhite}>{THEME.brand.phone}</Text>
+              <Text style={styles.btnDescWhite}>{contact.phone || contact.email}</Text>
             </View>
           </TouchableOpacity>
 
-          {/* Action 2: WhatsApp */}
           <TouchableOpacity
             onPress={handleWhatsApp}
             activeOpacity={0.85}

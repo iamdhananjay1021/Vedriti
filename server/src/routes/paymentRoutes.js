@@ -1,15 +1,12 @@
 import { Router } from 'express';
-import {
-  createPaymentOrder,
-  verifyPayment,
-  CreatePaymentOrderSchema,
-  VerifyPaymentSchema,
-} from '../controllers/paymentController.js';
-import { validateBody } from '../middlewares/validateRequest.js';
+import express from 'express';
+import * as payments from '../controllers/paymentController.js';
 
 const router = Router();
 
-router.post('/create-order', validateBody(CreatePaymentOrderSchema), createPaymentOrder);
-router.post('/verify', validateBody(VerifyPaymentSchema), verifyPayment);
+router.get('/callback', payments.paymentCallback);
+router.post('/webhook', payments.paymentWebhook);
+router.get('/mock/:linkId', payments.mockPaymentPage);
+router.post('/mock/:linkId/pay', express.urlencoded({ extended: false }), payments.mockPaymentPay);
 
 export default router;

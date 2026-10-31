@@ -2,23 +2,14 @@ import React from 'react';
 import { ScrollView, Text, TouchableOpacity, StyleSheet, View } from 'react-native';
 import { THEME } from '../../constants/theme';
 
-export const PUJA_CATEGORIES = [
-  'All Pujas',
-  'Griha Pravesh',
-  'Ganesh Puja',
-  'Satyanarayan',
-  'Havan',
-  'Shiv Puja',
-  'Marriage',
-  'Other Rituals',
-];
-
 interface PujaCategoryChipsProps {
+  categories: string[];
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
 }
 
 export const PujaCategoryChips: React.FC<PujaCategoryChipsProps> = ({
+  categories,
   selectedCategory,
   onSelectCategory,
 }) => {
@@ -29,7 +20,7 @@ export const PujaCategoryChips: React.FC<PujaCategoryChipsProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {PUJA_CATEGORIES.map((category) => {
+        {categories.map((category) => {
           const isSelected = selectedCategory === category;
           return (
             <TouchableOpacity

@@ -4,103 +4,77 @@ const { Schema } = mongoose;
 
 const FamilyMemberSchema = new Schema(
   {
-    name: { type: String, required: true, trim: true },
-    relation: { type: String, required: true, trim: true },
-    gotra: { type: String, required: true, trim: true },
-    rashi: { type: String, trim: true },
-    nakshatra: { type: String, trim: true },
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    relation: { type: String, required: true, trim: true, maxlength: 40 },
+    gotra: { type: String, trim: true, maxlength: 60, default: '' },
+    dateOfBirth: { type: String, trim: true, default: '' },
+    rashi: { type: String, trim: true, default: '' },
+    nakshatra: { type: String, trim: true, default: '' },
   },
-  { _id: true, timestamps: true }
+  { timestamps: true }
 );
 
 const UserSchema = new Schema(
   {
-    phone: {
-      type: String,
-      trim: true,
-      sparse: true,
-      index: true,
-    },
-    email: {
-      type: String,
-      trim: true,
-      lowercase: true,
-      sparse: true,
-      index: true,
-    },
-    password: {
-      type: String,
-    },
-    authProvider: {
-      type: String,
-      enum: ['phone', 'email'],
-      default: 'phone',
-    },
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-      default: 'धर्मनिष्ठ यजमान',
-    },
-    gotra: {
-      type: String,
-      required: true,
-      trim: true,
-      default: 'Kashyap Gotra',
-    },
-    kuldevi: {
-      type: String,
-      trim: true,
-      default: 'Mata Shakambhari Devi',
-    },
-    city: {
-      type: String,
-      trim: true,
-      default: 'Varanasi (Kashi)',
-    },
-    punyaPoints: {
-      type: Number,
-      default: 1080,
-      min: 0,
-    },
-    isVip: {
-      type: Boolean,
-      default: false,
-    },
-    familyMembers: {
-      type: [FamilyMemberSchema],
-      default: [
-        {
-          name: 'Sunita Sharma',
-          relation: 'धर्मपत्नी (Spouse)',
-          gotra: 'Kashyap Gotra',
-          rashi: 'Karka (Cancer)',
-          nakshatra: 'Pushya',
-        },
-        {
-          name: 'Aarav Sharma',
-          relation: 'पुत्र (Son)',
-          gotra: 'Kashyap Gotra',
-          rashi: 'Simha (Leo)',
-          nakshatra: 'Magha',
-        },
-        {
-          name: 'Pt. Ramprasad Sharma',
-          relation: 'पिताश्री (Father)',
-          gotra: 'Kashyap Gotra',
-          rashi: 'Dhanu (Sagittarius)',
-          nakshatra: 'Moola',
-        },
-      ],
-    },
-    otp: {
-      code: { type: String },
-      expiresAt: { type: Date },
-    },
+    phone: { type: String, trim: true },
+    email: { type: String, trim: true, lowercase: true },
+    password: { type: String, select: false },
+    authProvider: { type: String, enum: ['phone', 'email'], required: true },
+    emailVerified: { type: Boolean, default: false },
+    avatarUrl: { type: String, trim: true, default: '' },
+    name: { type: String, trim: true, maxlength: 80, default: '' },
+    gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER', ''], default: '' },
+    dateOfBirth: { type: String, trim: true, default: '' },
+    timeOfBirth: { type: String, trim: true, default: '' },
+    placeOfBirth: { type: String, trim: true, maxlength: 120, default: '' },
+    gotra: { type: String, trim: true, maxlength: 60, default: '' },
+    rashi: { type: String, trim: true, maxlength: 40, default: '' },
+    city: { type: String, trim: true, maxlength: 80, default: '' },
+    state: { type: String, trim: true, maxlength: 80, default: '' },
+    address: { type: String, trim: true, maxlength: 300, default: '' },
+    pinCode: { type: String, trim: true, default: '' },
+    profileCompleted: { type: Boolean, default: false, index: true },
+    familyMembers: { type: [FamilyMemberSchema], default: [] },
+    isBlocked: { type: Boolean, default: false },
+    lastLoginAt: { type: Date },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
+
+UserSchema.index({ phone: 1 }, { unique: true, partialFilterExpression: { phone: { $type: 'string' } } });
+UserSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string' } } });
+
+UserSchema.methods.toPublic = function toPublic() {
+  return {
+    id: this._id.toString(),
+    phone: this.phone || '',
+    email: this.email || '',
+    authProvider: this.authProvider,
+    emailVerified: this.emailVerified,
+    avatarUrl: this.avatarUrl || '',
+    name: this.name,
+    gender: this.gender,
+    dateOfBirth: this.dateOfBirth,
+    timeOfBirth: this.timeOfBirth,
+    placeOfBirth: this.placeOfBirth,
+    gotra: this.gotra,
+    rashi: this.rashi,
+    city: this.city,
+    state: this.state,
+    address: this.address,
+    pinCode: this.pinCode,
+    profileCompleted: this.profileCompleted,
+    familyMembers: (this.familyMembers || []).map((m) => ({
+      id: m._id.toString(),
+      name: m.name,
+      relation: m.relation,
+      gotra: m.gotra,
+      dateOfBirth: m.dateOfBirth,
+      rashi: m.rashi,
+      nakshatra: m.nakshatra,
+    })),
+    createdAt: this.createdAt,
+  };
+};
 
 export const User = mongoose.models.User || mongoose.model('User', UserSchema);

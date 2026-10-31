@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BackHandler, Modal, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as ExpoSplashScreen from 'expo-splash-screen';
 
 import { BottomTabBar, TabId } from './src/components/navigation/BottomTabBar';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -9,102 +10,86 @@ import { PujasScreen } from './src/screens/PujasScreen';
 import { PujaDetailScreen } from './src/screens/PujaDetailScreen';
 import { StoreScreen } from './src/screens/StoreScreen';
 import { KundliScreen } from './src/screens/KundliScreen';
-import { AccountScreen } from './src/screens/AccountScreen';
+import { AccountScreen, AccountSection } from './src/screens/AccountScreen';
 import { VedicChatScreen } from './src/screens/VedicChatScreen';
+import { SplashScreen } from './src/screens/SplashScreen';
+import { LoginScreen } from './src/screens/LoginScreen';
+import { ProfileSetupScreen } from './src/screens/ProfileSetupScreen';
 
-import { AuthProvider } from './src/context/AuthContext';
-import { AuthModal } from './src/components/modals/AuthModal';
-import { CheckoutModal, CheckoutItem } from './src/components/modals/CheckoutModal';
-import { PujaDetailModal } from './src/components/modals/PujaDetailModal';
-import { ProductDetailModal } from './src/components/modals/ProductDetailModal';
-import { KundliRequestModal } from './src/components/modals/KundliRequestModal';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { AppDataProvider, useAppData } from './src/context/AppDataContext';
+import { CartProvider, useCart } from './src/context/CartContext';
+import { BookingModal, BookingRequest } from './src/components/booking/BookingModal';
+import { CartModal } from './src/components/store/CartModal';
 import { SupportModal } from './src/components/modals/SupportModal';
+import { Button } from './src/components/ui';
+import { THEME } from './src/constants/theme';
 
-import { Puja, PujaPackage, PujaKit, Occasion, TODAYS_PANCHANG } from './src/data/mockData';
-import { whatsappService } from './src/services/whatsappService';
+import { Puja, PujaPackage } from './src/data/mockData';
+
+ExpoSplashScreen.preventAutoHideAsync().catch(() => {});
+
+const MIN_SPLASH_MS = 1600;
 
 function MainApp() {
+  const { kits } = useAppData();
+  const { syncWithCatalog } = useCart();
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [activePujaDetail, setActivePujaDetail] = useState<Puja | null>(null);
-  const [selectedPuja, setSelectedPuja] = useState<Puja | null>(null);
-  const [selectedPackage, setSelectedPackage] = useState<PujaPackage | null>(null);
-  const [selectedKit, setSelectedKit] = useState<PujaKit | null>(null);
-  const [occasionFilter, setOccasionFilter] = useState<string | null>(null);
+  const [bookingRequest, setBookingRequest] = useState<BookingRequest | null>(null);
+  const [cartVisible, setCartVisible] = useState(false);
+  const [supportVisible, setSupportVisible] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [accountSection, setAccountSection] = useState<AccountSection>('bookings');
 
-  // Checkout State
-  const [checkoutItem, setCheckoutItem] = useState<CheckoutItem | null>(null);
-  const [isCheckoutModalVisible, setIsCheckoutModalVisible] = useState(false);
+  useEffect(() => {
+    syncWithCatalog(kits);
+  }, [kits, syncWithCatalog]);
 
-  const [isPujaModalVisible, setIsPujaModalVisible] = useState(false);
-  const [isKitModalVisible, setIsKitModalVisible] = useState(false);
-  const [isKundliModalVisible, setIsKundliModalVisible] = useState(false);
-  const [isSupportModalVisible, setIsSupportModalVisible] = useState(false);
-
-  // Navigate to Puja Details screen
-  const handleSelectPuja = (puja: Puja) => {
-    setActivePujaDetail(puja);
-  };
-
-  // Open Full Enterprise Checkout Modal from Puja Details screen
-  const handleBookFromDetail = (puja: Puja, pkg: PujaPackage) => {
-    setActivePujaDetail(null);
-    setCheckoutItem({ type: 'puja', puja, package: pkg });
-    setIsCheckoutModalVisible(true);
-  };
-
-  // Open Full Enterprise Checkout Modal for Sacred Kit
-  const handleSelectKit = (kit: PujaKit) => {
-    setCheckoutItem({ type: 'kit', kit });
-    setIsCheckoutModalVisible(true);
-  };
-
-  const handleSelectOccasion = (occ: Occasion) => {
-    setActivePujaDetail(null);
-    setOccasionFilter(occ.filterTag);
-    setActiveTab('pujas');
-  };
-
-  const handleCheckoutSuccess = (orderId: string) => {
-    Alert.alert(
-      'Vedic Sankalp Registered! 🙏',
-      `Reference #${orderId} confirmed. Consecration initiated by the Kashi Vishwanath Parishad.`,
-      [
-        { text: 'WhatsApp Updates', onPress: () => whatsappService.chatWithAcharya(`Order #${orderId}`) },
-        { text: 'View in Vault', onPress: () => setActiveTab('account') },
-      ]
-    );
-  };
-
-  const handleKundliSubmitted = (reportId: string) => {
-    Alert.alert(
-      'Kundli Consultation Initiated! 📜',
-      `Reference #${reportId} registered. Our senior Jyotishacharya in Varanasi is analyzing your planetary Gochara transits.`,
-      [{ text: 'View in Sankalp Vault', onPress: () => setActiveTab('account') }]
-    );
-  };
-
-  const handleNotificationPress = () => {
-    Alert.alert(
-      'VedRiti Auspicious Daily Panchang ॐ',
-      `Today: ${TODAYS_PANCHANG.paksha} • ${TODAYS_PANCHANG.tithi}\nNakshatra: ${TODAYS_PANCHANG.nakshatra}\nAbhijit Muhurat: ${TODAYS_PANCHANG.abhijitMuhurat} (Active Now)\nRahu Kaal: ${TODAYS_PANCHANG.rahuKaal}\n\n${TODAYS_PANCHANG.auspiciousMessage}`,
-      [
-        { text: 'Consult on WhatsApp', onPress: () => whatsappService.chatWithAcharya('Panchang Muhurat Advice') },
-        { text: 'Har Har Mahadev' },
-      ]
-    );
-  };
-
-  const handleTabChange = (tab: TabId) => {
+  const handleTabChange = useCallback((tab: TabId) => {
     setActivePujaDetail(null);
     setActiveTab(tab);
+  }, []);
+
+  const openAccount = useCallback(
+    (section: AccountSection) => {
+      setAccountSection(section);
+      handleTabChange('account');
+    },
+    [handleTabChange]
+  );
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (activePujaDetail) {
+        setActivePujaDetail(null);
+        return true;
+      }
+      if (activeTab !== 'home') {
+        handleTabChange('home');
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [activePujaDetail, activeTab, handleTabChange]);
+
+  const handleBookFromDetail = (puja: Puja, pkg: PujaPackage) => {
+    setBookingRequest({
+      serviceType: 'PUJA',
+      puja,
+      packageType: pkg.id === 'pandit-samagri' ? 'WITH_SAMAGRI' : 'PANDIT_ONLY',
+    });
   };
+
+  const bookAppointment = () => setBookingRequest({ serviceType: 'CONSULTATION' });
+  const showBookings = () => openAccount('bookings');
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" />
 
       <View style={styles.contentContainer}>
-        {/* Dynamic Puja Details Screen (when viewing a specific puja) */}
         {activePujaDetail ? (
           <PujaDetailScreen
             puja={activePujaDetail}
@@ -115,42 +100,31 @@ function MainApp() {
           <>
             {activeTab === 'home' && (
               <HomeScreen
-                onSelectPuja={handleSelectPuja}
-                onNavigateTab={(tab) => handleTabChange(tab)}
-                onSelectOccasion={handleSelectOccasion}
-                onContactSupport={() => setIsSupportModalVisible(true)}
-                onNotificationPress={handleNotificationPress}
+                onSelectPuja={setActivePujaDetail}
+                onNavigateTab={handleTabChange}
+                onBookAppointment={bookAppointment}
+                onOpenBookings={showBookings}
                 onChatPress={() => handleTabChange('chat')}
               />
             )}
 
             {activeTab === 'pujas' && (
               <PujasScreen
-                onSelectPuja={handleSelectPuja}
-                activeOccasionFilter={occasionFilter}
-                onNotificationPress={handleNotificationPress}
-                onBackPress={() => handleTabChange('home')}
+                onSelectPuja={setActivePujaDetail}
+                onNotificationPress={showBookings}
               />
             )}
 
-            {activeTab === 'store' && (
-              <StoreScreen
-                onSelectKit={handleSelectKit}
-                onNotificationPress={handleNotificationPress}
-              />
-            )}
+            {activeTab === 'store' && <StoreScreen onOpenCart={() => setCartVisible(true)} onNotificationPress={showBookings} />}
 
-            {activeTab === 'kundli' && (
-              <KundliScreen
-                onRequestSuccess={handleKundliSubmitted}
-                onNotificationPress={handleNotificationPress}
-              />
-            )}
+            {activeTab === 'kundli' && <KundliScreen onViewRequests={() => openAccount('kundli')} onNotificationPress={showBookings} />}
 
             {activeTab === 'account' && (
               <AccountScreen
-                onContactSupport={() => setIsSupportModalVisible(true)}
-                onNotificationPress={handleNotificationPress}
+                section={accountSection}
+                onSectionChange={setAccountSection}
+                onEditProfile={() => setEditingProfile(true)}
+                onContactSupport={() => setSupportVisible(true)}
               />
             )}
 
@@ -158,67 +132,64 @@ function MainApp() {
               <VedicChatScreen
                 onBackPress={() => handleTabChange('home')}
                 onNavigateTab={(tab) => handleTabChange(tab as TabId)}
-                onSelectPujaById={(pujaId) => {
-                  handleTabChange('pujas');
-                }}
+                onSelectPujaById={() => handleTabChange('pujas')}
               />
             )}
           </>
         )}
       </View>
 
-      {/* Global Bottom Navigation Bar (Hidden when on PujaDetailScreen or VedicChatScreen) */}
-      {!activePujaDetail && activeTab !== 'chat' ? (
-        <BottomTabBar activeTab={activeTab} onTabChange={handleTabChange} />
-      ) : null}
+      {!activePujaDetail && activeTab !== 'chat' ? <BottomTabBar activeTab={activeTab} onTabChange={handleTabChange} /> : null}
 
-      {/* Universal Vedic Sanctum Authentication Modal (Static OTP 1080) */}
-      <AuthModal />
-
-      {/* Full Enterprise Checkout Modal */}
-      <CheckoutModal
-        visible={isCheckoutModalVisible}
-        item={checkoutItem}
-        onClose={() => setIsCheckoutModalVisible(false)}
-        onSuccess={handleCheckoutSuccess}
-      />
-
-      {/* Other Interactive Modals */}
-      <PujaDetailModal
-        puja={selectedPuja}
-        selectedPackage={selectedPackage}
-        initialStep="datetime"
-        visible={isPujaModalVisible}
-        onClose={() => setIsPujaModalVisible(false)}
-        onBookingSuccess={handleCheckoutSuccess}
-      />
-
-      <ProductDetailModal
-        kit={selectedKit}
-        visible={isKitModalVisible}
-        onClose={() => setIsKitModalVisible(false)}
-        onOrderSuccess={handleCheckoutSuccess}
-      />
-
-      <KundliRequestModal
-        visible={isKundliModalVisible}
-        onClose={() => setIsKundliModalVisible(false)}
-        onRequestSubmitted={handleKundliSubmitted}
-      />
-
-      <SupportModal
-        visible={isSupportModalVisible}
-        onClose={() => setIsSupportModalVisible(false)}
-      />
+      <BookingModal request={bookingRequest} onClose={() => setBookingRequest(null)} onViewBookings={showBookings} />
+      <CartModal visible={cartVisible} onClose={() => setCartVisible(false)} onViewOrders={() => openAccount('orders')} />
+      <SupportModal visible={supportVisible} onClose={() => setSupportVisible(false)} />
+      <Modal visible={editingProfile} animationType="slide" onRequestClose={() => setEditingProfile(false)}>
+        <ProfileSetupScreen mode="edit" onDone={() => setEditingProfile(false)} />
+      </Modal>
     </SafeAreaView>
   );
+}
+
+function OfflineScreen() {
+  const { retry, logout } = useAuth();
+  return (
+    <View style={styles.center}>
+      <Text style={styles.om}>ॐ</Text>
+      <Text style={styles.offlineTitle}>Can't reach VedRit</Text>
+      <Text style={styles.offlineText}>Please check your internet connection and try again.</Text>
+      <Button title="Try again" onPress={retry} style={styles.offlineBtn} />
+      <Button title="Logout" variant="ghost" onPress={logout} />
+    </View>
+  );
+}
+
+function Root() {
+  const { status, user } = useAuth();
+  const [minSplashDone, setMinSplashDone] = useState(false);
+
+  useEffect(() => {
+    ExpoSplashScreen.hideAsync().catch(() => {});
+    const t = setTimeout(() => setMinSplashDone(true), MIN_SPLASH_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (status === 'loading' || !minSplashDone) return <SplashScreen />;
+  if (status === 'offline') return <OfflineScreen />;
+  if (status === 'signedOut' || !user) return <LoginScreen />;
+  if (!user.profileCompleted) return <ProfileSetupScreen mode="setup" />;
+  return <MainApp />;
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <MainApp />
+        <AppDataProvider>
+          <CartProvider>
+            <Root />
+          </CartProvider>
+        </AppDataProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
@@ -227,9 +198,14 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAF6EE',
+    backgroundColor: THEME.colors.primaryBg,
   },
   contentContainer: {
     flex: 1,
   },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: THEME.colors.primaryBg },
+  om: { fontSize: 56, color: THEME.colors.primarySaffron },
+  offlineTitle: { fontSize: 20, fontWeight: '800', color: THEME.colors.heading, marginTop: 8 },
+  offlineText: { fontSize: 14, color: THEME.colors.bodyText, textAlign: 'center', marginTop: 6 },
+  offlineBtn: { alignSelf: 'stretch', marginTop: 20 },
 });

@@ -1,131 +1,47 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Landmark, ShoppingBag, Sparkles, UserCheck } from 'lucide-react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { CalendarClock, Landmark, Package, ScrollText } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { RADIUS, SPACE } from '../../constants/ui';
 
-interface QuickActionsProps {
+interface Props {
   onBookPujaPress: () => void;
-  onStorePress: () => void;
+  onAppointmentPress: () => void;
   onKundliPress: () => void;
-  onAcharyaPress?: () => void;
+  onStorePress: () => void;
 }
 
-export const QuickActions: React.FC<QuickActionsProps> = ({
-  onBookPujaPress,
-  onStorePress,
-  onKundliPress,
-  onAcharyaPress,
-}) => {
+export const QuickActions: React.FC<Props> = ({ onBookPujaPress, onAppointmentPress, onKundliPress, onStorePress }) => {
   const actions = [
-    {
-      id: 'puja',
-      title: 'Book Puja',
-      sub: 'Sacred Vidhi',
-      icon: Landmark,
-      bg: '#FDF2E9',
-      border: '#F6DEC8',
-      iconColor: THEME.colors.primarySaffron,
-      onPress: onBookPujaPress,
-    },
-    {
-      id: 'store',
-      title: 'Vedic Store',
-      sub: '100% Shuddh',
-      icon: ShoppingBag,
-      bg: '#FEF3C7',
-      border: '#FDE68A',
-      iconColor: '#B45309',
-      onPress: onStorePress,
-    },
-    {
-      id: 'kundli',
-      title: 'Kundali',
-      sub: 'Kashi Jyotish',
-      icon: Sparkles,
-      bg: '#FAF0E4',
-      border: '#EAD7BF',
-      iconColor: '#996515',
-      onPress: onKundliPress,
-    },
-    {
-      id: 'acharya',
-      title: 'Acharyas',
-      sub: 'Consultation',
-      icon: UserCheck,
-      bg: '#F0FDF4',
-      border: '#BBF7D0',
-      iconColor: '#16A34A',
-      onPress: onAcharyaPress || onKundliPress,
-    },
+    { id: 'puja', label: 'Book Puja', icon: Landmark, tint: '#FDEBDD', color: THEME.colors.primarySaffron, onPress: onBookPujaPress },
+    { id: 'appointment', label: 'Appointment', icon: CalendarClock, tint: '#E6F4EA', color: '#15803D', onPress: onAppointmentPress },
+    { id: 'kundli', label: 'Kundli', icon: ScrollText, tint: '#EEE9FB', color: '#6D4FD1', onPress: onKundliPress },
+    { id: 'store', label: 'Puja Kits', icon: Package, tint: '#FFF1CC', color: '#B7791F', onPress: onStorePress },
   ];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.gridRow}>
-        {actions.map((item) => {
-          const IconComponent = item.icon;
-          return (
-            <TouchableOpacity
-              key={item.id}
-              onPress={item.onPress}
-              activeOpacity={0.78}
-              style={styles.actionChip}
-              accessibilityLabel={item.title}
-            >
-              <View style={[styles.iconCircle, { backgroundColor: item.bg, borderColor: item.border }]}>
-                <IconComponent size={22} color={item.iconColor} strokeWidth={2.2} />
-              </View>
-              <Text style={styles.actionTitle} numberOfLines={1}>
-                {item.title}
-              </Text>
-              <Text style={styles.actionSub} numberOfLines={1}>
-                {item.sub}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+    <View style={styles.row}>
+      {actions.map(({ id, label, icon: Icon, tint, color, onPress }, i) => (
+        <Animated.View key={id} entering={FadeInUp.delay(120 + i * 70).duration(420)} style={styles.cell}>
+          <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.touch} accessibilityRole="button" accessibilityLabel={label}>
+            <View style={[styles.icon, { backgroundColor: tint }]}>
+              <Icon size={24} color={color} strokeWidth={2} />
+            </View>
+            <Text style={styles.label} numberOfLines={1}>
+              {label}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      ))}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 16,
-    marginBottom: 20,
-  },
-  gridRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  actionChip: {
-    alignItems: 'center',
-    flex: 1,
-    paddingHorizontal: 2,
-  },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  actionTitle: {
-    fontFamily: THEME.typography.serif,
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1E120A',
-    textAlign: 'center',
-    letterSpacing: -0.1,
-  },
-  actionSub: {
-    fontSize: 9.5,
-    color: '#8A7D70',
-    textAlign: 'center',
-    marginTop: 1,
-    fontWeight: '500',
-  },
+  row: { flexDirection: 'row', paddingHorizontal: SPACE.lg, gap: SPACE.sm },
+  cell: { flex: 1 },
+  touch: { alignItems: 'center', gap: SPACE.sm, paddingVertical: SPACE.xs },
+  icon: { width: 58, height: 58, borderRadius: RADIUS.lg, alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 12.5, fontWeight: '700', color: THEME.colors.heading },
 });

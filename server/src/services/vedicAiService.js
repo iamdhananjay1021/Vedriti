@@ -1,5 +1,5 @@
 /**
- * VedRiti Enterprise Vedic AI Intelligence Service
+ * VedRit Enterprise Vedic AI Intelligence Service
  * 
  * Enterprise Capabilities:
  * 1. Multi-turn conversation sessions with persistent devotee context (Gotra, Rashi, City).
@@ -12,6 +12,7 @@
 
 import { ChatSession } from '../models/ChatSession.js';
 import { ChatMessage } from '../models/ChatMessage.js';
+import { config } from '../config/env.js';
 
 // In-memory fallback stores when MongoDB is operating in decoupled mode
 const MEMORY_SESSIONS = new Map();
@@ -236,7 +237,7 @@ export class VedicAiService {
 
     // 3. Try Generative AI (Gemini 1.5 Flash) if key configured
     let aiResponse = null;
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const geminiKey = config.geminiApiKey;
     if (geminiKey) {
       try {
         aiResponse = await this._callGeminiAiWithContext(cleanQuery, session, targetYear, geminiKey);
@@ -533,7 +534,7 @@ export class VedicAiService {
     const context = session.devoteeContext || {};
     const devoteeInfo = `Devotee Name: ${context.name || 'Devotee'}, Gotra: ${context.gotra || 'Not Specified'}, Rashi: ${context.rashi || 'Not Specified'}, City: ${context.city || 'India'}. Target Year: ${targetYear || 'Current/Upcoming'}.`;
 
-    const systemPrompt = `You are VedRiti Rishi AI (वेदऋषि), a revered Vedic Astrologer, Panchang Scholar, and Shastra Expert from Kashi.
+    const systemPrompt = `You are VedRit Rishi AI (वेदऋषि), a revered Vedic Astrologer, Panchang Scholar, and Shastra Expert from Kashi.
 Devotee Information: ${devoteeInfo}
 
 You speak in respectful, pure, culturally authentic Hindi (with Sanskrit shlokas and English terms where helpful).

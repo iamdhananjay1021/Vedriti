@@ -4,67 +4,47 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config/env.js';
 import apiRouter from './routes/index.js';
-import { errorHandler, AppError } from './middlewares/errorHandler.js';
+import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 import { generalLimiter } from './middlewares/rateLimiter.js';
 
-/**
- * Creates and configures the Express application
- * @returns {import('express').Application}
- */
 export const createApp = () => {
   const app = express();
 
-  // 1. Security HTTP Headers
-  app.use(helmet());
-
-  // 2. CORS configuration for Expo mobile app & Admin portal
+  app.set('trust proxy', 1);
+  app.disable('x-powered-by');
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow mobile apps, curl, or origins in whitelist
-        if (!origin || config.clientOrigins.includes(origin) || config.nodeEnv !== 'production') {
-          callback(null, true);
-        } else {
-          callback(new Error('Blocked by CORS policy of VedRiti Sanctum'));
-        }
+        if (!origin || config.clientOrigins.includes(origin) || !config.isProduction) return callback(null, true);
+        callback(null, false);
       },
-      credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
     })
   );
+  app.use(
+    express.json({
+      limit: '1mb',
+      verify: (req, res, buf) => {
+        if (req.originalUrl.includes('/payments/webhook')) req.rawBody = buf.toString('utf8');
+      },
+    })
+  );
+  app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 
-  // 3. Request body parsing
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-  // 4. Request Logging
   if (config.nodeEnv !== 'test') {
-    app.use(morgan(config.nodeEnv === 'production' ? 'combined' : 'dev'));
+    app.use(morgan(config.isProduction ? 'combined' : 'dev'));
   }
 
-  // 5. General Rate Limiter
-  app.use(generalLimiter);
+  app.use(config.apiPrefix, generalLimiter);
 
-  // 6. Base Welcome Route
   app.get('/', (req, res) => {
-    res.status(200).json({
-      platform: 'VedRiti (वेदरीति) Vedic Sanctum & Puja Booking Platform',
-      version: '1.0.0',
-      mantra: 'श्रद्धा • संकल्प • सिद्धि',
-      documentation: `${config.apiPrefix}/health`,
-    });
+    res.json({ platform: 'VedRit API', health: `${config.apiPrefix}/health` });
   });
 
-  // 7. Mount Core API Routes
   app.use(config.apiPrefix, apiRouter);
-
-  // 8. 404 Handler
-  app.use((req, res, next) => {
-    next(new AppError(`मार्ग उपलब्ध नहीं है: ${req.originalUrl} (Endpoint not found)`, 404));
-  });
-
-  // 9. Centralized Error Handling Middleware
+  app.use(notFoundHandler);
   app.use(errorHandler);
 
   return app;

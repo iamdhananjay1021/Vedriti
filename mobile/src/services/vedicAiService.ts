@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { API_BASE_URL } from '../config/api';
 
 export interface VedicAiResponse {
   answer: string;
@@ -17,11 +17,6 @@ interface VedicKnowledgeEntry {
   keywords: string[];
   response: VedicAiResponse;
 }
-
-const SERVER_BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:5001', // Android emulator / reverse adb
-  default: 'http://localhost:5001',
-});
 
 const VEDIC_KNOWLEDGE_BASE: VedicKnowledgeEntry[] = [
   // 1. DHANTERAS / DHANTRAYODASHI
@@ -614,7 +609,7 @@ export async function queryVedicAiAsync(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const res = await fetch(`${SERVER_BASE_URL}/api/v1/ai/ask`, {
+    const res = await fetch(`${API_BASE_URL}/ai/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

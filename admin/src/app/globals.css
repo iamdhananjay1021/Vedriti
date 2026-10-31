@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --bg-primary: #FAF7F2;
@@ -46,7 +47,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom Scrollbar for sleek luxury portal */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

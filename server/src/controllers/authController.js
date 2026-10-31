@@ -1,182 +1,155 @@
 import { z } from 'zod';
 import * as authService from '../services/authService.js';
+import { asyncHandler } from '../middlewares/errorHandler.js';
+import { DATE_REGEX, TIME_REGEX } from '../utils/time.js';
 
-export const RequestOtpSchema = z.object({
-  phone: z.string().min(10, 'कृपया 10 अंकों का मान्य मोबाइल नंबर दर्ज करें'),
-});
+const trimmed = (max) => z.string().trim().max(max);
+
+export const RequestOtpSchema = z.object({ phone: z.string().min(10).max(16) });
 
 export const VerifyOtpSchema = z.object({
-  phone: z.string().min(10, 'कृपया 10 अंकों का मान्य मोबाइल नंबर दर्ज करें'),
-  otp: z.string().min(4, 'कृपया 4 अंकों का वैदिक OTP कोड दर्ज करें'),
-  name: z.string().optional(),
-  gotra: z.string().optional(),
+  phone: z.string().min(10).max(16),
+  otp: z.string().trim().regex(/^\d{4,6}$/, 'OTP must be 4-6 digits'),
 });
+
+const emailField = z.string().trim().email('Please enter a valid email').max(120);
+const otpField = z.string().trim().regex(/^\d{4,6}$/, 'Code must be 4-6 digits');
+const passwordField = z.string().min(8, 'Password must be at least 8 characters').max(64);
+
+export const EmailOtpRequestSchema = z.object({ email: emailField });
+
+export const EmailOtpVerifySchema = z.object({ email: emailField, otp: otpField, name: trimmed(80).optional() });
 
 export const EmailSignupSchema = z.object({
-  email: z.string().email('कृपया मान्य ईमेल पता दर्ज करें (Valid email required)'),
-  password: z.string().min(6, 'पासवर्ड कम से कम 6 अक्षरों का होना चाहिए'),
-  name: z.string().optional(),
-  gotra: z.string().optional(),
-  phone: z.string().optional(),
+  email: emailField,
+  password: passwordField,
+  name: trimmed(80).optional(),
+  otp: otpField,
 });
+
+export const PasswordResetSchema = z.object({ email: emailField, otp: otpField, newPassword: passwordField });
 
 export const EmailLoginSchema = z.object({
-  email: z.string().email('कृपया मान्य ईमेल पता दर्ज करें'),
-  password: z.string().min(1, 'पासवर्ड आवश्यक है'),
+  email: z.string().trim().email('Please enter a valid email'),
+  password: z.string().min(1, 'Password is required').max(64),
 });
 
-export const UpdateProfileSchema = z.object({
-  name: z.string().min(2).optional(),
-  gotra: z.string().min(2).optional(),
-  kuldevi: z.string().optional(),
-  city: z.string().optional(),
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().max(64).optional(),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters').max(64),
 });
+
+export const UpdateProfileSchema = z
+  .object({
+    name: trimmed(80).min(2, 'Name is too short'),
+    phone: z.string().trim().max(16),
+    email: z.union([z.string().trim().email('Please enter a valid email'), z.literal('')]),
+    gender: z.enum(['MALE', 'FEMALE', 'OTHER']),
+    dateOfBirth: z.string().regex(DATE_REGEX, 'Date of birth must be YYYY-MM-DD'),
+    timeOfBirth: z.union([z.string().regex(TIME_REGEX, 'Time of birth must be HH:mm'), z.literal('')]),
+    placeOfBirth: trimmed(120),
+    gotra: trimmed(60),
+    rashi: trimmed(40),
+    address: trimmed(300).min(5, 'Please enter your full address'),
+    city: trimmed(80).min(2, 'City is required'),
+    state: trimmed(80).min(2, 'State is required'),
+    pinCode: z.string().trim().regex(/^[1-9]\d{5}$/, 'Please enter a valid 6-digit PIN code'),
+  })
+  .partial()
+  .refine(
+    (v) => !v.dateOfBirth || new Date(`${v.dateOfBirth}T00:00:00Z`).getTime() <= Date.now(),
+    { message: 'Date of birth cannot be in the future', path: ['dateOfBirth'] }
+  );
 
 export const FamilyMemberSchema = z.object({
-  name: z.string().min(2, 'सदस्य का नाम आवश्यक है'),
-  relation: z.string().min(2, 'संबंध आवश्यक है'),
-  gotra: z.string().min(2, 'गोत्र आवश्यक है'),
-  rashi: z.string().optional(),
-  nakshatra: z.string().optional(),
+  name: trimmed(80).min(2, 'Name is required'),
+  relation: trimmed(40).min(2, 'Relation is required'),
+  gotra: trimmed(60).optional().default(''),
+  dateOfBirth: z.union([z.string().regex(DATE_REGEX), z.literal('')]).optional().default(''),
+  rashi: trimmed(40).optional().default(''),
+  nakshatra: trimmed(40).optional().default(''),
 });
 
-/**
- * POST /api/v1/auth/request-otp
- */
-export const handleRequestOtp = async (req, res, next) => {
-  try {
-    const { phone } = req.body;
-    const result = await authService.requestOtp(phone);
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+export const handleRequestOtp = asyncHandler(async (req, res) => {
+  const data = await authService.requestOtp(req.body.phone);
+  res.json({ success: true, data });
+});
 
-/**
- * POST /api/v1/auth/verify-otp
- * Authenticates user via static OTP (1080) or active DB OTP
- */
-export const handleVerifyOtp = async (req, res, next) => {
-  try {
-    const { phone, otp, name, gotra } = req.body;
-    const result = await authService.verifyOtp(phone, otp, name, gotra);
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+export const handleVerifyOtp = asyncHandler(async (req, res) => {
+  const data = await authService.verifyOtp(req.body.phone, req.body.otp);
+  res.json({ success: true, data });
+});
 
-/**
- * POST /api/v1/auth/signup-email
- * Direct email registration with password, gotra, name
- */
-export const handleEmailSignup = async (req, res, next) => {
-  try {
-    const { email, password, name, gotra, phone } = req.body;
-    const result = await authService.signupWithEmail(email, password, name, gotra, phone);
-    res.status(201).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+export const handleEmailSignup = asyncHandler(async (req, res) => {
+  const data = await authService.signupWithEmail(req.body);
+  res.status(201).json({ success: true, data });
+});
 
-/**
- * POST /api/v1/auth/login-email
- * Direct email authentication with password
- */
-export const handleEmailLogin = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    const result = await authService.loginWithEmail(email, password);
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+export const handleEmailLogin = asyncHandler(async (req, res) => {
+  const data = await authService.loginWithEmail(req.body);
+  res.json({ success: true, data });
+});
 
-/**
- * GET /api/v1/auth/profile
- */
-export const handleGetProfile = async (req, res, next) => {
-  try {
-    const user = await authService.getUserProfile(req.userId);
-    res.status(200).json({
-      success: true,
-      data: {
-        id: user._id,
-        phone: user.phone,
-        name: user.name,
-        gotra: user.gotra,
-        kuldevi: user.kuldevi,
-        city: user.city,
-        punyaPoints: user.punyaPoints,
-        isVip: user.isVip,
-        familyMembers: user.familyMembers,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+export const handleEmailOtpRequest = asyncHandler(async (req, res) => {
+  const data = await authService.requestEmailOtp(req.body.email);
+  res.json({ success: true, data });
+});
 
-/**
- * PATCH /api/v1/auth/profile
- */
-export const handleUpdateProfile = async (req, res, next) => {
-  try {
-    const user = await authService.updateUserProfile(req.userId, req.body);
-    res.status(200).json({
-      success: true,
-      message: 'प्रोफ़ाइल सफलतापूर्वक अद्यतन की गई (Profile updated)',
-      data: user,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+export const handleEmailOtpVerify = asyncHandler(async (req, res) => {
+  const data = await authService.verifyEmailOtp(req.body.email, req.body.otp, req.body.name);
+  res.json({ success: true, data });
+});
 
-/**
- * POST /api/v1/auth/family
- */
-export const handleAddFamilyMember = async (req, res, next) => {
-  try {
-    const familyMembers = await authService.addFamilyMember(req.userId, req.body);
-    res.status(201).json({
-      success: true,
-      message: 'पारिवारिक संकल्प में नया सदस्य नामांकित किया गया (Family member added)',
-      data: familyMembers,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+export const handleForgotPassword = asyncHandler(async (req, res) => {
+  const data = await authService.requestPasswordReset(req.body.email);
+  res.json({ success: true, data });
+});
 
-/**
- * DELETE /api/v1/auth/family/:id
- */
-export const handleRemoveFamilyMember = async (req, res, next) => {
-  try {
-    const memberId = String(req.params.id);
-    const familyMembers = await authService.removeFamilyMember(req.userId, memberId);
-    res.status(200).json({
-      success: true,
-      message: 'सदस्य हटाया गया (Family member removed)',
-      data: familyMembers,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+export const handleResetPassword = asyncHandler(async (req, res) => {
+  const data = await authService.resetPassword(req.body);
+  res.json({ success: true, data });
+});
+
+export const handleSetAvatar = asyncHandler(async (req, res) => {
+  const data = await authService.setAvatar(req.userId, req.body);
+  res.json({ success: true, data });
+});
+
+export const handleRemoveAvatar = asyncHandler(async (req, res) => {
+  const data = await authService.removeAvatar(req.userId);
+  res.json({ success: true, data });
+});
+
+export const handleGetMe = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: req.user.toPublic() });
+});
+
+export const handleUpdateMe = asyncHandler(async (req, res) => {
+  const data = await authService.updateProfile(req.userId, req.body);
+  res.json({ success: true, data });
+});
+
+export const handleChangePassword = asyncHandler(async (req, res) => {
+  await authService.changePassword(req.userId, req.body);
+  res.json({ success: true, message: 'Password updated' });
+});
+
+export const handleDeleteMe = asyncHandler(async (req, res) => {
+  await authService.deleteAccount(req.userId);
+  res.json({ success: true, message: 'Your account has been deleted' });
+});
+
+export const handleAddFamilyMember = asyncHandler(async (req, res) => {
+  const data = await authService.addFamilyMember(req.userId, req.body);
+  res.status(201).json({ success: true, data });
+});
+
+export const handleUpdateFamilyMember = asyncHandler(async (req, res) => {
+  const data = await authService.updateFamilyMember(req.userId, req.params.id, req.body);
+  res.json({ success: true, data });
+});
+
+export const handleRemoveFamilyMember = asyncHandler(async (req, res) => {
+  const data = await authService.removeFamilyMember(req.userId, req.params.id);
+  res.json({ success: true, data });
+});

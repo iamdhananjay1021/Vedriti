@@ -8,7 +8,9 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node test-api.mjs",
-    "seed": "node src/scripts/seedDatabase.js"
+    "seed": "node src/scripts/seedDatabase.js",
+    "dev-user": "node src/scripts/createDevUser.js",
+    "setup": "node src/scripts/seedDatabase.js && node src/scripts/createDevUser.js"
   },
   "keywords": [
     "vedriti",
@@ -44,5 +46,8 @@
     "@types/node": "^22.13.4",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
