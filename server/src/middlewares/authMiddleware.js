@@ -38,6 +38,7 @@ export const requireAdmin = (req, res, next) => {
     if (!token) throw new AppError('Admin login required', 401);
     const payload = jwt.verify(token, config.jwtSecret);
     if (payload.role !== 'admin') throw new AppError('Admin access required', 403);
+    req.adminEmail = payload.email || '';
     next();
   } catch (error) {
     next(error);

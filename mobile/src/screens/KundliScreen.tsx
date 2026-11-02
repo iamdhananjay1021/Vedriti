@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/ui/KeyboardAwareScrollView';
-import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { CheckCircle2, Compass, HeartHandshake, MessageCircleQuestion, ShieldAlert } from 'lucide-react-native';
+import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { CheckCircle2, Compass, HeartHandshake, Languages, Lock, MessageCircleQuestion, ShieldAlert, UserCheck } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { AppBackground } from '../components/common/AppBackground';
 import { AppHeader } from '../components/common/AppHeader';
 import { Button, Card, Chips, DateField, Field, SectionTitle } from '../components/ui';
@@ -25,7 +26,22 @@ const TYPES: { type: KundliType; icon: any; hint: string }[] = [
   { type: 'GENERAL_QUERY', icon: MessageCircleQuestion, hint: 'Ask Pandit Ji any question' },
 ];
 
-const DOSHAS = ['Mangal Dosha', 'Kaal Sarp Dosha', 'Pitra Dosha', 'Shani Sade Sati', 'Not sure'];
+const TRUST = [
+  { icon: UserCheck, label: 'Personal reading' },
+  { icon: Lock, label: 'Confidential' },
+  { icon: Languages, label: 'Hindi / English' },
+];
+
+const StepHeader: React.FC<{ n: number; title: string }> = ({ n, title }) => (
+  <View style={styles.stepHeader}>
+    <View style={styles.stepBadge}>
+      <Text style={styles.stepBadgeText}>{n}</Text>
+    </View>
+    <Text style={styles.stepTitle}>{title}</Text>
+  </View>
+);
+
+const DOSHAS =['Mangal Dosha', 'Kaal Sarp Dosha', 'Pitra Dosha', 'Shani Sade Sati', 'Not sure'];
 
 const emptyPerson = (): KundliPerson => ({
   fullName: '',
@@ -216,46 +232,75 @@ export const KundliScreen: React.FC<KundliScreenProps> = ({ onViewRequests, onNo
             </Card>
           ) : (
             <>
-              <Card style={styles.intro}>
-                <Image source={THEME.assets.bannerKundli} style={styles.introImage} resizeMode="contain" />
-                <View style={styles.flex}>
-                  <Text style={styles.introTitle}>Personal reading by Pandit Ji</Text>
-                  <Text style={styles.introText}>Your details go directly to Pandit Ji. The answer appears in Account → Kundli Requests.</Text>
+              <LinearGradient colors={['#F59A45', '#E4702B', '#CF5A22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+                <View style={styles.heroTop}>
+                  <View style={styles.heroOm}>
+                    <Text style={styles.heroOmText}>ॐ</Text>
+                  </View>
+                  <View style={styles.flex}>
+                    <Text style={styles.heroTitle}>Consult Pandit Ji</Text>
+                    <Text style={styles.heroSub}>Personal Kundli & Jyotish guidance</Text>
+                  </View>
                 </View>
+                <View style={styles.trustRow}>
+                  {TRUST.map(({ icon: Icon, label }) => (
+                    <View key={label} style={styles.trustItem}>
+                      <Icon size={14} color="#FFFFFF" />
+                      <Text style={styles.trustText}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </LinearGradient>
+
+              <StepHeader n={1} title="Choose consultation" />
+              <View style={styles.typeList}>
+                {TYPES.map(({ type: t, icon: Icon, hint }, i) => {
+                  const active = t === type;
+                  const tf = settings ? settings.kundliFees[t] : undefined;
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      onPress={() => setType(t)}
+                      activeOpacity={0.8}
+                      style={[styles.type, i < TYPES.length - 1 && styles.typeDivider, active && styles.typeActive]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                    >
+                      <View style={[styles.typeIcon, active && styles.typeIconActive]}>
+                        <Icon size={20} color={active ? '#FFF' : THEME.colors.primarySaffron} />
+                      </View>
+                      <View style={styles.flex}>
+                        <Text style={styles.typeTitle} numberOfLines={1}>{KUNDLI_TYPE_LABELS[t]}</Text>
+                        <Text style={styles.typeHint} numberOfLines={2}>{hint}</Text>
+                      </View>
+                      <View style={styles.typeRight}>
+                        <Text style={styles.typeFee}>{tf === undefined ? '' : tf ? rupees(tf) : 'Free'}</Text>
+                        <View style={[styles.radio, active && styles.radioActive]}>{active ? <View style={styles.radioDot} /> : null}</View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <StepHeader n={2} title="Birth details" />
+              <Card style={styles.formCard}>
+                {canUseMine ? (
+                  <Button title="Use my birth details" variant="outline" onPress={fillMine} style={styles.mine} />
+                ) : null}
+                <PersonForm
+                  title={type === 'GUNA_MILAN' ? 'Boy / first person' : 'Your details'}
+                  value={primary}
+                  onChange={setPrimary}
+                  errors={errors}
+                  prefix="primary"
+                />
+                {type === 'GUNA_MILAN' ? (
+                  <PersonForm title="Girl / second person" value={partner} onChange={setPartner} errors={errors} prefix="partner" />
+                ) : null}
               </Card>
 
-              <SectionTitle title="What do you need?" />
-              {TYPES.map(({ type: t, icon: Icon, hint }) => {
-                const active = t === type;
-                return (
-                  <TouchableOpacity key={t} onPress={() => setType(t)} activeOpacity={0.85} style={[styles.type, active && styles.typeActive]}>
-                    <Icon size={20} color={active ? THEME.colors.primarySaffron : THEME.colors.mutedText} />
-                    <View style={styles.flex}>
-                      <Text style={styles.typeTitle}>{KUNDLI_TYPE_LABELS[t]}</Text>
-                      <Text style={styles.typeHint}>{hint}</Text>
-                    </View>
-                    <Text style={styles.typeFee}>{settings ? (settings.kundliFees[t] ? rupees(settings.kundliFees[t]) : 'Free') : ''}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-
-              {canUseMine ? (
-                <Button title="Use my birth details" variant="outline" onPress={fillMine} style={styles.mine} />
-              ) : null}
-
-              <PersonForm
-                title={type === 'GUNA_MILAN' ? 'Boy / first person' : 'Birth details'}
-                value={primary}
-                onChange={setPrimary}
-                errors={errors}
-                prefix="primary"
-              />
-              {type === 'GUNA_MILAN' ? (
-                <PersonForm title="Girl / second person" value={partner} onChange={setPartner} errors={errors} prefix="partner" />
-              ) : null}
-
               {type === 'DOSHA_NIVARAN' ? (
-                <View style={styles.block}>
+                <Card style={styles.formCard}>
                   <SectionTitle title="Which dosha?" />
                   <View style={styles.wrap}>
                     {DOSHAS.map((d) => {
@@ -264,58 +309,73 @@ export const KundliScreen: React.FC<KundliScreenProps> = ({ onViewRequests, onNo
                         <TouchableOpacity
                           key={d}
                           onPress={() => setDoshas((prev) => (active ? prev.filter((x) => x !== d) : [...prev, d]))}
-                          style={[styles.chip, active && styles.typeActive]}
+                          style={[styles.chip, active && styles.chipActive]}
                         >
                           <Text style={[styles.chipText, active && styles.chipTextActive]}>{d}</Text>
                         </TouchableOpacity>
                       );
                     })}
                   </View>
-                </View>
+                </Card>
               ) : null}
 
-              <Field
-                label={type === 'GENERAL_QUERY' ? 'Your question' : 'Questions for Pandit Ji (optional)'}
-                required={type === 'GENERAL_QUERY'}
-                value={questions}
-                onChangeText={setQuestions}
-                multiline
-                maxLength={1800}
-                style={styles.multiline}
-                error={errors.questions}
-                placeholder="Career, marriage, health, business, muhurat..."
-              />
-              <Field
-                label="Contact number"
-                required
-                prefix="+91"
-                value={phone}
-                onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
-                keyboardType="phone-pad"
-                maxLength={10}
-                error={errors.phone}
-              />
-              <Chips
-                label="Reply language"
-                value={language}
-                onChange={setLanguage}
-                options={[
-                  { value: 'HINDI', label: 'Hindi' },
-                  { value: 'ENGLISH', label: 'English' },
-                ]}
-              />
-              {fee > 0 ? (
+              <StepHeader n={3} title="Your question & contact" />
+              <Card style={styles.formCard}>
+                <Field
+                  label={type === 'GENERAL_QUERY' ? 'Your question' : 'Questions for Pandit Ji (optional)'}
+                  required={type === 'GENERAL_QUERY'}
+                  value={questions}
+                  onChangeText={setQuestions}
+                  multiline
+                  maxLength={1800}
+                  style={styles.multiline}
+                  error={errors.questions}
+                  placeholder="Career, marriage, health, business, muhurat..."
+                />
+                <Field
+                  label="Contact number"
+                  required
+                  prefix="+91"
+                  value={phone}
+                  onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  error={errors.phone}
+                />
                 <Chips
-                  label="Payment"
-                  value={paymentMethod}
-                  onChange={setPaymentMethod}
+                  label="Reply language"
+                  value={language}
+                  onChange={setLanguage}
                   options={[
-                    { value: 'ONLINE', label: `Pay ${rupees(fee)} now` },
-                    ...(settings?.allowPayLater ? [{ value: 'PAY_LATER' as const, label: 'Pay later' }] : []),
+                    { value: 'HINDI', label: 'Hindi' },
+                    { value: 'ENGLISH', label: 'English' },
                   ]}
                 />
-              ) : null}
+                {fee > 0 ? (
+                  <Chips
+                    label="Payment"
+                    value={paymentMethod}
+                    onChange={setPaymentMethod}
+                    options={[
+                      { value: 'ONLINE', label: `Pay ${rupees(fee)} now` },
+                      ...(settings?.allowPayLater ? [{ value: 'PAY_LATER' as const, label: 'Pay later' }] : []),
+                    ]}
+                  />
+                ) : null}
+              </Card>
+
+              <View style={styles.summary}>
+                <View style={styles.flex}>
+                  <Text style={styles.summaryLabel}>{KUNDLI_TYPE_LABELS[type]}</Text>
+                  <Text style={styles.summaryNote}>Reviewed personally by Pandit Ji</Text>
+                </View>
+                <Text style={styles.summaryFee}>{fee > 0 ? rupees(fee) : 'Free'}</Text>
+              </View>
               <Button title="Send to Pandit Ji" onPress={submit} loading={submitting} style={styles.full} />
+              <View style={styles.privacy}>
+                <Lock size={12} color={THEME.colors.mutedText} />
+                <Text style={styles.privacyText}>Your birth details are shared only with Pandit Ji.</Text>
+              </View>
             </>
           )}
         </KeyboardAwareScrollView>
@@ -328,25 +388,40 @@ const C = THEME.colors;
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: 16, paddingBottom: 48 },
-  intro: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
-  introImage: { width: 64, height: 64 },
-  introTitle: { fontSize: 16, fontWeight: '800', color: C.heading },
-  introText: { fontSize: 12.5, color: C.bodyText, marginTop: 4 },
-  type: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFF',
-    borderWidth: 1.5,
-    borderColor: C.border,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-  },
-  typeActive: { borderColor: C.primarySaffron, backgroundColor: C.softSaffronBg },
-  typeTitle: { fontSize: 15, fontWeight: '700', color: C.heading },
-  typeHint: { fontSize: 12, color: C.mutedText, marginTop: 2 },
+  hero: { borderRadius: 20, padding: 16, marginBottom: 18 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  heroOm: { width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.2)' },
+  heroOmText: { fontSize: 26, lineHeight: 40, color: '#FFFFFF', includeFontPadding: false },
+  heroTitle: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
+  trustRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+  trustItem: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.22)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  trustText: { fontSize: 11.5, fontWeight: '700', color: '#FFFFFF' },
+  stepHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, marginTop: 6 },
+  stepBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: C.primarySaffron, alignItems: 'center', justifyContent: 'center' },
+  stepBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  stepTitle: { fontSize: 16, fontWeight: '800', color: C.heading },
+  typeList: { backgroundColor: '#FFF', borderRadius: 18, borderWidth: 1, borderColor: C.borderLight, overflow: 'hidden', marginBottom: 14 },
+  type: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14, backgroundColor: '#FFF' },
+  typeDivider: { borderBottomWidth: 1, borderBottomColor: C.borderLight },
+  typeActive: { backgroundColor: C.softSaffronBg },
+  typeIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: C.softSaffronBg, alignItems: 'center', justifyContent: 'center' },
+  typeIconActive: { backgroundColor: C.primarySaffron },
+  typeTitle: { fontSize: 15, fontWeight: '800', color: C.heading },
+  typeHint: { fontSize: 12, lineHeight: 16, color: C.mutedText, marginTop: 2 },
+  typeRight: { alignItems: 'flex-end', gap: 8 },
   typeFee: { fontSize: 14, fontWeight: '800', color: C.primarySaffron },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  radioActive: { borderColor: C.primarySaffron },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.primarySaffron },
+  formCard: { marginBottom: 14 },
+  summary: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.softSaffronBg, borderRadius: 14, padding: 14, marginTop: 4 },
+  summaryLabel: { fontSize: 14, fontWeight: '800', color: C.heading },
+  summaryNote: { fontSize: 12, color: C.mutedText, marginTop: 2 },
+  summaryFee: { fontSize: 18, fontWeight: '800', color: C.primarySaffron },
+  privacy: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 12 },
+  privacyText: { fontSize: 11.5, color: C.mutedText },
+  chipActive: { borderColor: C.primarySaffron, backgroundColor: C.softSaffronBg },
   mine: { marginVertical: 8 },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   switchLabel: { fontSize: 13, color: C.bodyText, flex: 1 },

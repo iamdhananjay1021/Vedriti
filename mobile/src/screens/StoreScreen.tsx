@@ -20,8 +20,8 @@ interface StoreScreenProps {
   onNotificationPress?: () => void;
 }
 
-const GUTTER = SPACE.lg;
-const GAP = SPACE.md;
+const GUTTER = 16;
+const GAP = 10;
 
 export const StoreScreen: React.FC<StoreScreenProps> = ({ onOpenCart, onNotificationPress }) => {
   const { kits, loading, error, refresh, settings } = useAppData();
@@ -31,7 +31,7 @@ export const StoreScreen: React.FC<StoreScreenProps> = ({ onOpenCart, onNotifica
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<PujaKit | null>(null);
 
-  const columns = width >= 700 ? 3 : 2;
+  const columns = width >= 900 ? 4 : width >= 640 ? 3 : 2;
   const cardWidth = Math.floor((width - GUTTER * 2 - GAP * (columns - 1)) / columns);
 
   const categories = useMemo(
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   column: { gap: GAP },
   bleed: { marginHorizontal: -GUTTER },
   loader: { marginTop: 48 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACE.md, marginTop: SPACE.xs },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACE.sm },
   count: TYPE.caption,
   delivery: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   deliveryText: { fontSize: 12, fontWeight: '600', color: THEME.colors.bilvaGreen },

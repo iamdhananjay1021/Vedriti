@@ -292,7 +292,7 @@ function BannerEditor({
       }
     >
       <div className="grid gap-3">
-        <ImageField label="Banner image" hint="(wide photo, 16:9 works best; optional)" aspect="aspect-[16/9]" value={b.imageUrl} onChange={(v) => set('imageUrl', v)} />
+        <ImageField label="Banner image" hint="(shown full width in the app exactly as uploaded, e.g. 1200×600; title and button are only used when there is no image)" aspect="aspect-[16/9]" value={b.imageUrl} onChange={(v) => set('imageUrl', v)} />
         <Input label="Title *" maxLength={80} value={b.title} onChange={(e) => set('title', e.target.value)} />
         <Input label="Subtitle" maxLength={160} value={b.subtitle} onChange={(e) => set('subtitle', e.target.value)} />
         <div className="grid gap-3 sm:grid-cols-2">

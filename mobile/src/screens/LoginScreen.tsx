@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, EyeOff, Mail, Smartphone } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
+import { BrandMark } from '../components/common/BrandLogo';
 import { Button, Field } from '../components/ui';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -353,9 +354,7 @@ export const LoginScreen: React.FC = () => {
         <View style={styles.flex}>
           <KeyboardAwareScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <View style={styles.hero}>
-              <View style={styles.omCircle}>
-                <Text style={styles.om}>ॐ</Text>
-              </View>
+              <BrandMark size={88} />
               <Text style={styles.brand}>VedRit</Text>
               <Text style={styles.tagline}>Book puja, appointments & kundli with Pandit Ji</Text>
             </View>

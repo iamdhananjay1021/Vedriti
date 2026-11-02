@@ -5,6 +5,8 @@ import { config } from '../config/env.js';
 import { Booking } from '../models/Booking.js';
 import { Order } from '../models/Order.js';
 import { KundliRequest } from '../models/KundliRequest.js';
+import bcrypt from 'bcryptjs';
+import { Admin } from '../models/Admin.js';
 import { User } from '../models/User.js';
 import { Puja } from '../models/Puja.js';
 import { Product } from '../models/Product.js';
@@ -50,14 +52,20 @@ const requireObjectId = (id, label) => {
 export const AdminLoginSchema = z.object({ email: z.string().trim().email(), password: z.string().min(1) });
 
 export const adminLogin = asyncHandler(async (req, res) => {
-  const emailOk = safeEqual(req.body.email.toLowerCase(), config.adminEmail);
-  const passwordOk = safeEqual(req.body.password, config.adminPassword);
-  if (!emailOk || !passwordOk) throw new AppError('Invalid admin email or password', 401);
-  res.json({ success: true, data: { token: signAdminToken(), email: config.adminEmail } });
+  const email = req.body.email.toLowerCase();
+  const admin = await Admin.findOne({ email, isActive: true });
+  let ok = false;
+  if (admin) {
+    ok = await bcrypt.compare(req.body.password, admin.password);
+  } else {
+    ok = Boolean(config.adminEmail && config.adminPassword) && safeEqual(email, config.adminEmail) && safeEqual(req.body.password, config.adminPassword);
+  }
+  if (!ok) throw new AppError('Invalid admin email or password', 401);
+  res.json({ success: true, data: { token: signAdminToken(email), email } });
 });
 
 export const adminMe = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: { email: config.adminEmail } });
+  res.json({ success: true, data: { email: req.adminEmail || config.adminEmail } });
 });
 
 export const getStats = asyncHandler(async (req, res) => {

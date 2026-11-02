@@ -20,8 +20,8 @@ const BLOCKED_MESSAGE = 'This account has been blocked. Please contact support.'
 export const signUserToken = (user) =>
   jwt.sign({ sub: user._id.toString(), role: 'user' }, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
 
-export const signAdminToken = () =>
-  jwt.sign({ sub: 'admin', role: 'admin' }, config.jwtSecret, { expiresIn: '7d' });
+export const signAdminToken = (email = '') =>
+  jwt.sign({ sub: 'admin', role: 'admin', email }, config.jwtSecret, { expiresIn: '7d' });
 
 const hashOtp = (key, code) => crypto.createHmac('sha256', config.jwtSecret).update(`${key}:${code}`).digest('hex');
 const randomCode = () => String(crypto.randomInt(0, 10 ** config.otpLength)).padStart(config.otpLength, '0');

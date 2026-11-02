@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, LayoutChangeEvent, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
+import { ActivityIndicator, Alert, Linking, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
 import { Camera, CalendarCheck, ChevronRight, LogOut, MessageCircle, Pencil, Phone, Plus, ScrollText, ShieldCheck, ShoppingBag, Trash2, UserRound, Video } from 'lucide-react-native';
@@ -49,69 +48,27 @@ const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: 'family', label: 'Family' },
 ];
 
-const CountUp: React.FC<{ value: number }> = ({ value }) => {
-  const [shown, setShown] = useState(0);
+const ProgressBar: React.FC<{ percent: number }> = ({ percent }) => (
+  <View style={styles.progressTrack}>
+    <View style={[styles.progressFill, { width: `${percent}%` }]} />
+  </View>
+);
 
-  useEffect(() => {
-    if (value === 0) {
-      setShown(0);
-      return undefined;
-    }
-    const start = Date.now();
-    const duration = 700;
-    const timer = setInterval(() => {
-      const progress = Math.min(1, (Date.now() - start) / duration);
-      setShown(Math.round(value * (1 - Math.pow(1 - progress, 3))));
-      if (progress === 1) clearInterval(timer);
-    }, 16);
-    return () => clearInterval(timer);
-  }, [value]);
-
-  return <Text style={styles.statValue}>{shown}</Text>;
-};
-
-const ProgressBar: React.FC<{ percent: number }> = ({ percent }) => {
-  const width = useSharedValue(0);
-  useEffect(() => {
-    width.value = withTiming(percent, { duration: 900 });
-  }, [percent, width]);
-  const fill = useAnimatedStyle(() => ({ width: `${width.value}%` }));
-  return (
-    <View style={styles.progressTrack}>
-      <Animated.View style={[styles.progressFill, fill]} />
-    </View>
-  );
-};
-
-const SlidingTabs: React.FC<{ value: AccountSection; onChange: (v: AccountSection) => void }> = ({ value, onChange }) => {
-  const [width, setWidth] = useState(0);
-  const x = useSharedValue(0);
-  const tabWidth = width ? (width - 8) / SECTIONS.length : 0;
-  const index = SECTIONS.findIndex((s) => s.id === value);
-
-  useEffect(() => {
-    x.value = withSpring(index * tabWidth, { damping: 18, stiffness: 180 });
-  }, [index, tabWidth, x]);
-
-  const indicator = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
-
-  return (
-    <View style={styles.tabs} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
-      {tabWidth ? <Animated.View style={[styles.tabIndicator, { width: tabWidth }, indicator]} /> : null}
-      {SECTIONS.map((s) => (
-        <TouchableOpacity
-          key={s.id}
-          style={styles.tab}
-          onPress={() => onChange(s.id)}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: value === s.id }}
-        >
-          <Text style={[styles.tabText, value === s.id && styles.tabTextActive]}>{s.label}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-};
+const SegmentedTabs: React.FC<{ value: AccountSection; onChange: (v: AccountSection) => void }> = ({ value, onChange }) => (
+  <View style={styles.tabs}>
+    {SECTIONS.map((s) => (
+      <TouchableOpacity
+        key={s.id}
+        style={[styles.tab, value === s.id && styles.tabActive]}
+        onPress={() => onChange(s.id)}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: value === s.id }}
+      >
+        <Text style={[styles.tabText, value === s.id && styles.tabTextActive]}>{s.label}</Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+);
 
 const MenuRow: React.FC<{ icon: React.ReactNode; tint: string; label: string; hint?: string; onPress: () => void; danger?: boolean; last?: boolean }> = ({
   icon,
@@ -241,7 +198,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
     const active = b.status === 'PENDING' || b.status === 'CONFIRMED';
     const unpaid = active && b.paymentStatus !== 'PAID' && b.amount > 0;
     return (
-      <Animated.View key={b.id} entering={FadeInDown.delay(i * 60).duration(350)}>
+      <View key={b.id}>
         <Card style={styles.item}>
           <View style={styles.itemHead}>
             <Text style={styles.itemTitle}>{b.title}</Text>
@@ -273,14 +230,14 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
             ) : null}
           </View>
         </Card>
-      </Animated.View>
+      </View>
     );
   };
 
   const renderOrder = (o: Order, i: number) => {
     const cancellable = o.status === 'PLACED' || o.status === 'CONFIRMED';
     return (
-      <Animated.View key={o.id} entering={FadeInDown.delay(i * 60).duration(350)}>
+      <View key={o.id}>
         <Card style={styles.item}>
           <View style={styles.itemHead}>
             <Text style={styles.itemTitle}>{o.orderId}</Text>
@@ -315,12 +272,12 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
             ) : null}
           </View>
         </Card>
-      </Animated.View>
+      </View>
     );
   };
 
   const renderKundli = (k: KundliRequest, i: number) => (
-    <Animated.View key={k.id} entering={FadeInDown.delay(i * 60).duration(350)}>
+    <View key={k.id}>
       <Card style={styles.item}>
         <View style={styles.itemHead}>
           <Text style={styles.itemTitle}>{KUNDLI_TYPE_LABELS[k.type]}</Text>
@@ -347,14 +304,14 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
           <Button title="Pay now" onPress={() => payFor('kundli', k.requestId, k.paymentUrl)} loading={busyId === k.requestId} style={styles.action} />
         ) : null}
       </Card>
-    </Animated.View>
+    </View>
   );
 
   const renderFamily = () => (
     <View>
       {user?.familyMembers.length ? (
         user.familyMembers.map((m, i) => (
-          <Animated.View key={m.id} entering={FadeInDown.delay(i * 60).duration(350)}>
+          <View key={m.id}>
             <Card style={styles.memberRow}>
               <View style={styles.memberIcon}>
                 <UserRound size={20} color={THEME.colors.primarySaffron} />
@@ -370,7 +327,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
                 <Trash2 size={18} color="#B91C1C" />
               </TouchableOpacity>
             </Card>
-          </Animated.View>
+          </View>
         ))
       ) : (
         <Text style={styles.muted}>Add family members to include them in your puja sankalp.</Text>
@@ -399,15 +356,15 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={loading && Boolean(bookings)} onRefresh={loadAll} />}
       >
-        <Animated.View entering={FadeInDown.duration(450)}>
-          <LinearGradient colors={['#3A1A0E', '#241008']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+        <View>
+          <LinearGradient colors={['#F59A45', '#E4702B', '#CF5A22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
             <View style={styles.heroTop}>
-              <Animated.View entering={ZoomIn.delay(150).springify().damping(14)}>
+              <View>
                 <TouchableOpacity onPress={openMenu} activeOpacity={0.85} style={styles.avatarWrap} accessibilityRole="button" accessibilityLabel="Change profile photo">
                   <Avatar uri={user?.avatarUrl} name={user?.name} size={84} ring />
-                  <View style={styles.cameraBadge}>{avatarBusy ? <ActivityIndicator size="small" color="#FFF" /> : <Camera size={14} color="#FFF" />}</View>
+                  <View style={styles.cameraBadge}>{avatarBusy ? <ActivityIndicator size="small" color={C.primarySaffron} /> : <Camera size={14} color={C.primarySaffron} />}</View>
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
               <View style={styles.heroText}>
                 <Text style={styles.heroName} numberOfLines={1}>
                   {user?.name || 'Devotee'}
@@ -450,18 +407,18 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
 
             <View style={styles.heroActions}>
               <TouchableOpacity style={styles.editBtn} onPress={onEditProfile} activeOpacity={0.85} accessibilityRole="button">
-                <Pencil size={15} color="#3A1A0E" />
+                <Pencil size={15} color={C.primarySaffron} />
                 <Text style={styles.editText}>Edit profile</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.photoBtn} onPress={openMenu} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Change photo">
-                <Camera size={15} color="#FDE7C2" />
+                <Camera size={15} color="#FFF" />
                 <Text style={styles.photoText}>Photo</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.delay(120).duration(450)} style={styles.stats}>
+        <View style={styles.stats}>
           {[
             { id: 'bookings' as const, label: 'Bookings', value: bookings?.length ?? 0, icon: CalendarCheck },
             { id: 'orders' as const, label: 'Orders', value: orders?.length ?? 0, icon: ShoppingBag },
@@ -469,15 +426,15 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
           ].map(({ id, label, value, icon: Icon }) => (
             <TouchableOpacity key={id} style={[styles.stat, section === id && styles.statActive]} onPress={() => onSectionChange(id)} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel={`${label}: ${value}`}>
               <Icon size={18} color={THEME.colors.primarySaffron} />
-              <CountUp value={value} />
+              <Text style={styles.statValue}>{value}</Text>
               <Text style={styles.statLabel}>{label}</Text>
             </TouchableOpacity>
           ))}
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.delay(200).duration(450)}>
-          <SlidingTabs value={section} onChange={onSectionChange} />
-        </Animated.View>
+        <View>
+          <SegmentedTabs value={section} onChange={onSectionChange} />
+        </View>
 
         <View style={styles.listArea}>
           {error ? <EmptyState title="Could not load" subtitle={error} action={<Button title="Retry" onPress={loadAll} />} /> : null}
@@ -488,7 +445,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
           {section === 'family' ? renderFamily() : null}
         </View>
 
-        <Animated.View entering={FadeInDown.delay(260).duration(450)}>
+        <View>
           <Text style={styles.groupLabel}>Account</Text>
           <View style={styles.group}>
             <MenuRow icon={<Pencil size={18} color="#B7791F" />} tint="#FFF1CC" label="Edit profile" hint="Name, birth details, address" onPress={onEditProfile} />
@@ -507,7 +464,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
           </View>
 
           <Text style={styles.version}>VedRit v{version}</Text>
-        </Animated.View>
+        </View>
       </KeyboardAwareScrollView>
     </AppBackground>
   );
@@ -527,38 +484,38 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: C.primarySaffron,
+    backgroundColor: '#FFF',
     borderWidth: 2,
-    borderColor: '#3A1A0E',
+    borderColor: '#F59A45',
     alignItems: 'center',
     justifyContent: 'center',
   },
   heroText: { flex: 1 },
-  heroName: { color: '#FFF8E7', fontSize: 21, fontWeight: '800', letterSpacing: -0.2 },
-  heroMeta: { color: 'rgba(255,248,231,0.78)', fontSize: 13, marginTop: 2 },
+  heroName: { color: '#FFFFFF', fontSize: 21, fontWeight: '800', letterSpacing: -0.2 },
+  heroMeta: { color: 'rgba(255,255,255,0.9)', fontSize: 13, marginTop: 2 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  chip: { color: '#FDE7C2', fontSize: 11, fontWeight: '700', backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 9, paddingVertical: 3, borderRadius: RADIUS.pill, overflow: 'hidden' },
-  completion: { marginTop: SPACE.lg, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: RADIUS.md, padding: SPACE.md },
+  chip: { color: '#FFFFFF', fontSize: 11, fontWeight: '700', backgroundColor: 'rgba(255,255,255,0.22)', paddingHorizontal: 9, paddingVertical: 3, borderRadius: RADIUS.pill, overflow: 'hidden' },
+  completion: { marginTop: SPACE.lg, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: RADIUS.md, padding: SPACE.md },
   completionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  completionLabel: { color: '#FFF8E7', fontSize: 13, fontWeight: '800' },
-  completionAction: { color: C.gold, fontSize: 13, fontWeight: '800' },
+  completionLabel: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  completionAction: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
   doneBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  doneText: { color: '#86EFAC', fontSize: 12, fontWeight: '800' },
-  progressTrack: { height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden' },
-  progressFill: { height: 7, borderRadius: 4, backgroundColor: C.gold },
-  completionHint: { color: 'rgba(255,248,231,0.7)', fontSize: 12, marginTop: 8 },
+  doneText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  progressTrack: { height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)', overflow: 'hidden' },
+  progressFill: { height: 7, borderRadius: 4, backgroundColor: '#FFFFFF' },
+  completionHint: { color: 'rgba(255,255,255,0.88)', fontSize: 12, marginTop: 8 },
   heroActions: { flexDirection: 'row', gap: SPACE.sm, marginTop: SPACE.md },
-  editBtn: { flex: 1, height: 44, borderRadius: RADIUS.pill, backgroundColor: '#FDE7C2', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  editText: { color: '#3A1A0E', fontWeight: '800', fontSize: 14 },
-  photoBtn: { height: 44, paddingHorizontal: 18, borderRadius: RADIUS.pill, borderWidth: 1, borderColor: 'rgba(253,231,194,0.4)', flexDirection: 'row', alignItems: 'center', gap: 7 },
-  photoText: { color: '#FDE7C2', fontWeight: '800', fontSize: 14 },
+  editBtn: { flex: 1, height: 44, borderRadius: RADIUS.pill, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  editText: { color: C.primarySaffron, fontWeight: '800', fontSize: 14 },
+  photoBtn: { height: 44, paddingHorizontal: 18, borderRadius: RADIUS.pill, borderWidth: 1, borderColor: 'rgba(255,255,255,0.7)', flexDirection: 'row', alignItems: 'center', gap: 7 },
+  photoText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
   stats: { flexDirection: 'row', gap: SPACE.sm, paddingHorizontal: SPACE.lg, marginTop: SPACE.lg },
   stat: { flex: 1, backgroundColor: '#FFF', borderRadius: RADIUS.lg, borderWidth: 1.5, borderColor: C.borderLight, alignItems: 'center', paddingVertical: SPACE.md, gap: 2 },
   statActive: { borderColor: C.primarySaffron, backgroundColor: C.softSaffronBg },
   statValue: { fontSize: 22, fontWeight: '800', color: C.heading, marginTop: 2 },
   statLabel: TYPE.caption,
   tabs: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: RADIUS.pill, padding: 4, marginHorizontal: SPACE.lg, marginTop: SPACE.lg, borderWidth: 1, borderColor: C.borderLight },
-  tabIndicator: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: RADIUS.pill, backgroundColor: C.primarySaffron },
+  tabActive: { backgroundColor: C.primarySaffron, borderRadius: RADIUS.pill },
   tab: { flex: 1, paddingVertical: 10, alignItems: 'center' },
   tabText: { fontSize: 13, fontWeight: '700', color: C.bodyText },
   tabTextActive: { color: '#FFF' },

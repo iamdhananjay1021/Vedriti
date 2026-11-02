@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Image, NativeScrollEvent, NativeSyntheticEvent, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
-import Animated, { Extrapolation, SharedValue, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowRight } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { RADIUS, SPACE } from '../../constants/ui';
 import type { ApiBanner } from '../../types/api';
 
-const GUTTER = SPACE.lg;
-const GAP = SPACE.md;
 const AUTO_MS = 5000;
+const GUTTER = SPACE.lg;
+const DEFAULT_RATIO = 2;
+const MIN_RATIO = 1.4;
+const MAX_RATIO = 3;
 
 export const DEFAULT_BANNERS: ApiBanner[] = [
   {
@@ -39,86 +40,95 @@ interface Props {
 
 const BannerItem: React.FC<{
   banner: ApiBanner;
-  index: number;
   width: number;
-  scrollX: SharedValue<number>;
+  height: number;
   onPress: () => void;
-}> = ({ banner, index, width, scrollX, onPress }) => {
-  const snap = width + GAP;
-  const animated = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(scrollX.value, [(index - 1) * snap, index * snap, (index + 1) * snap], [0.94, 1, 0.94], Extrapolation.CLAMP) }],
-    opacity: interpolate(scrollX.value, [(index - 1) * snap, index * snap, (index + 1) * snap], [0.75, 1, 0.75], Extrapolation.CLAMP),
-  }));
+}> = ({ banner, width, height, onPress }) => {
   const interactive = banner.targetType !== 'NONE';
 
   return (
-    <Animated.View style={[{ width }, animated]}>
-      <TouchableOpacity activeOpacity={interactive ? 0.92 : 1} onPress={interactive ? onPress : undefined} style={styles.card} accessibilityRole={interactive ? 'button' : undefined} accessibilityLabel={banner.title}>
-        {banner.imageUrl ? (
-          <>
-            <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-            <LinearGradient colors={['rgba(26,16,9,0.05)', 'rgba(26,16,9,0.78)']} style={StyleSheet.absoluteFill} />
-          </>
-        ) : (
-          <>
-            <LinearGradient colors={['#D66628', '#A32F1A', '#6B1408']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-            <Text style={styles.watermark}>ॐ</Text>
-          </>
-        )}
-        <View style={styles.content}>
-          <Text style={styles.title} numberOfLines={2}>
-            {banner.title}
-          </Text>
-          {banner.subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={2}>
-              {banner.subtitle}
+    <View style={{ width: width + GUTTER * 2, paddingHorizontal: GUTTER }}>
+    <TouchableOpacity
+      activeOpacity={interactive ? 0.92 : 1}
+      onPress={interactive ? onPress : undefined}
+      style={{ width, height, borderRadius: RADIUS.lg, overflow: 'hidden' }}
+      accessibilityRole={interactive ? 'button' : undefined}
+      accessibilityLabel={banner.title}
+    >
+      {banner.imageUrl ? (
+        <Image source={{ uri: banner.imageUrl }} style={{ width, height }} resizeMode="cover" />
+      ) : (
+        <View style={[styles.fallback, { width, height }]}>
+          <LinearGradient colors={['#F59A45', '#E4702B', '#CF5A22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          <Text style={styles.watermark}>ॐ</Text>
+          <View style={styles.content}>
+            <Text style={styles.title} numberOfLines={2}>
+              {banner.title}
             </Text>
-          ) : null}
-          {banner.ctaLabel && interactive ? (
-            <View style={styles.cta}>
-              <Text style={styles.ctaText}>{banner.ctaLabel}</Text>
-              <ArrowRight size={14} color={THEME.colors.primarySaffron} />
-            </View>
-          ) : null}
+            {banner.subtitle ? (
+              <Text style={styles.subtitle} numberOfLines={2}>
+                {banner.subtitle}
+              </Text>
+            ) : null}
+            {banner.ctaLabel && interactive ? (
+              <View style={styles.cta}>
+                <Text style={styles.ctaText}>{banner.ctaLabel}</Text>
+                <ArrowRight size={14} color={THEME.colors.primarySaffron} />
+              </View>
+            ) : null}
+          </View>
         </View>
-      </TouchableOpacity>
-    </Animated.View>
+      )}
+    </TouchableOpacity>
+    </View>
   );
-};
-
-const Dot: React.FC<{ index: number; snap: number; scrollX: SharedValue<number> }> = ({ index, snap, scrollX }) => {
-  const style = useAnimatedStyle(() => ({
-    width: interpolate(scrollX.value, [(index - 1) * snap, index * snap, (index + 1) * snap], [6, 20, 6], Extrapolation.CLAMP),
-    opacity: interpolate(scrollX.value, [(index - 1) * snap, index * snap, (index + 1) * snap], [0.35, 1, 0.35], Extrapolation.CLAMP),
-  }));
-  return <Animated.View style={[styles.dot, style]} />;
 };
 
 export const BannerCarousel: React.FC<Props> = ({ banners, onPressBanner }) => {
   const { width: screenWidth } = useWindowDimensions();
-  const itemWidth = screenWidth - GUTTER * 2;
-  const snap = itemWidth + GAP;
+  const width = screenWidth - GUTTER * 2;
+  const page = screenWidth;
   const data = useMemo(() => (banners.length ? banners : DEFAULT_BANNERS), [banners]);
+  const firstImage = data.find((b) => b.imageUrl)?.imageUrl || '';
+  const [ratio, setRatio] = useState(DEFAULT_RATIO);
 
-  const scrollX = useSharedValue(0);
+  useEffect(() => {
+    if (!firstImage) {
+      setRatio(DEFAULT_RATIO);
+      return;
+    }
+    let live = true;
+    Image.getSize(
+      firstImage,
+      (w, h) => {
+        if (live && w > 0 && h > 0) setRatio(Math.min(MAX_RATIO, Math.max(MIN_RATIO, w / h)));
+      },
+      () => undefined
+    );
+    return () => {
+      live = false;
+    };
+  }, [firstImage]);
+
+  const height = Math.round(width / ratio);
   const list = useRef<FlatList<ApiBanner>>(null);
   const index = useRef(0);
+  const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
-
-  const onScroll = useAnimatedScrollHandler((e) => {
-    scrollX.value = e.contentOffset.x;
-  });
 
   const onMomentumEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      index.current = Math.round(e.nativeEvent.contentOffset.x / snap);
+      const i = Math.round(e.nativeEvent.contentOffset.x / page);
+      index.current = i;
+      setActive(i);
       setPaused(false);
     },
-    [snap]
+    [page]
   );
 
   useEffect(() => {
     index.current = 0;
+    setActive(0);
     list.current?.scrollToOffset({ offset: 0, animated: false });
   }, [data.length]);
 
@@ -127,36 +137,30 @@ export const BannerCarousel: React.FC<Props> = ({ banners, onPressBanner }) => {
     const timer = setInterval(() => {
       const next = (index.current + 1) % data.length;
       index.current = next;
-      list.current?.scrollToOffset({ offset: next * snap, animated: true });
+      setActive(next);
+      list.current?.scrollToOffset({ offset: next * page, animated: true });
     }, AUTO_MS);
     return () => clearInterval(timer);
-  }, [data.length, paused, snap]);
+  }, [data.length, paused, page]);
 
   return (
     <View>
-      <Animated.FlatList
-        ref={list as never}
+      <FlatList
+        ref={list}
         data={data}
-        keyExtractor={(b: ApiBanner) => b.id}
+        keyExtractor={(b) => b.id}
         horizontal
+        pagingEnabled
         showsHorizontalScrollIndicator={false}
-        snapToInterval={snap}
-        decelerationRate="fast"
-        disableIntervalMomentum
-        contentContainerStyle={styles.list}
-        ItemSeparatorComponent={() => <View style={{ width: GAP }} />}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+        getItemLayout={(_, i) => ({ length: page, offset: page * i, index: i })}
         onScrollBeginDrag={() => setPaused(true)}
         onMomentumScrollEnd={onMomentumEnd}
-        renderItem={({ item, index: i }: { item: ApiBanner; index: number }) => (
-          <BannerItem banner={item} index={i} width={itemWidth} scrollX={scrollX} onPress={() => onPressBanner(item)} />
-        )}
+        renderItem={({ item }) => <BannerItem banner={item} width={width} height={height} onPress={() => onPressBanner(item)} />}
       />
       {data.length > 1 ? (
         <View style={styles.dots}>
           {data.map((b, i) => (
-            <Dot key={b.id} index={i} snap={snap} scrollX={scrollX} />
+            <View key={b.id} style={[styles.dot, i === active && styles.dotActive]} />
           ))}
         </View>
       ) : null}
@@ -165,24 +169,24 @@ export const BannerCarousel: React.FC<Props> = ({ banners, onPressBanner }) => {
 };
 
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: GUTTER },
-  card: { height: 188, borderRadius: RADIUS.xl, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: '#6B1408' },
-  watermark: { position: 'absolute', right: -6, top: -18, fontSize: 150, color: 'rgba(255,248,231,0.16)', lineHeight: 190 },
+  fallback: { justifyContent: 'flex-end', overflow: 'hidden' },
+  watermark: { position: 'absolute', right: -6, top: -18, fontSize: 150, color: 'rgba(255,255,255,0.18)', lineHeight: 190 },
   content: { padding: SPACE.lg + 2 },
-  title: { fontFamily: THEME.typography.display, fontSize: 22, lineHeight: 28, fontWeight: '700', color: '#FFF8E7' },
-  subtitle: { fontSize: 13, lineHeight: 18, color: 'rgba(255,248,231,0.88)', marginTop: 4 },
+  title: { fontSize: 22, lineHeight: 28, fontWeight: '800', color: '#FFFFFF' },
+  subtitle: { fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.92)', marginTop: 4 },
   cta: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF8E7',
+    backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.pill,
     paddingHorizontal: 14,
     paddingVertical: 8,
     marginTop: SPACE.md,
   },
   ctaText: { color: THEME.colors.primarySaffron, fontWeight: '800', fontSize: 13 },
-  dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: SPACE.md },
-  dot: { height: 6, borderRadius: 3, backgroundColor: THEME.colors.primarySaffron },
+  dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: SPACE.sm },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: THEME.colors.border },
+  dotActive: { width: 18, backgroundColor: THEME.colors.primarySaffron },
 });

@@ -5,6 +5,7 @@ import { THEME } from '../../constants/theme';
 import { SPACE } from '../../constants/ui';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar } from './Avatar';
+import { BrandLogo } from './BrandLogo';
 
 interface AppHeaderProps {
   title?: string;
@@ -35,8 +36,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   rightActions,
 }) => {
   const { user } = useAuth();
-  const firstName = (user?.name || '').trim().split(/\s+/)[0];
-  const heading = isHome ? (firstName ? `Namaste, ${firstName}` : 'Namaste') : title || 'VedRit';
+  const heading = title || 'VedRit';
 
   return (
     <View style={styles.row}>
@@ -46,9 +46,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </HeaderIconButton>
       ) : null}
 
-      <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
-        {heading}
-      </Text>
+      {isHome ? (
+        <View style={styles.brand}>
+          <BrandLogo size={38} />
+        </View>
+      ) : (
+        <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
+          {heading}
+        </Text>
+      )}
 
       <View style={styles.actions}>
         {onSearchPress ? (
@@ -87,6 +93,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     color: THEME.colors.heading,
   },
+  brand: { flex: 1 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   iconButton: {
     width: 38,

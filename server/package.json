@@ -9,6 +9,7 @@
     "dev": "node --watch src/server.js",
     "test": "node test-api.mjs",
     "seed": "node src/scripts/seedDatabase.js",
+    "admin:create": "node src/scripts/createAdmin.js",
     "dev-user": "node src/scripts/createDevUser.js",
     "setup": "node src/scripts/seedDatabase.js && node src/scripts/createDevUser.js"
   },
