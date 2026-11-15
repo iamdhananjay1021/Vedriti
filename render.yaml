@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: vedrit-api
+    runtime: node
+    region: singapore
+    plan: starter
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: API_PREFIX
+        value: /api/v1
+      - key: PUBLIC_API_URL
+        value: https://api.vedrit.in
+      - key: CLIENT_ORIGIN
+        value: https://vedrit.in,https://www.vedrit.in,https://vedriti.vercel.app
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 30d
+      - key: MONGODB_URI
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: VedRit <no-reply@vedrit.in>
+      - key: SMS_PROVIDER
+        value: fast2sms
+      - key: FAST2SMS_API_KEY
+        sync: false
+      - key: STATIC_OTP
+        sync: false
+      - key: REVIEWER_PHONES
+        sync: false
+      - key: REVIEWER_EMAILS
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

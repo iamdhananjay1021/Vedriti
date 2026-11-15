@@ -93,7 +93,7 @@ export const THEME = {
     subTagline: 'श्रद्धा • संकल्प • सिद्धि',
   },
   assets: {
-    background: require('../../assets/images/app-background.png'),
+    background: require('../../assets/images/app-background.jpg'),
     logoLotus: require('../../assets/images/logo-lotus.png'),
     heroKalash: require('../../assets/images/hero-kalash.png'),
     pujaGanesh: require('../../assets/images/puja-ganesh.png'),
