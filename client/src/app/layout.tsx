@@ -20,7 +20,6 @@ export const metadata: Metadata = {
   description:
     "Book pujas, appointments and kundli consultations with Pandit Ji, and order puja kits online. VedRit is coming soon to Google Play.",
   applicationName: "VedRit",
-  icons: { icon: "/icon.png", apple: "/icon.png" },
   openGraph: {
     type: "website",
     url: SITE_URL,
