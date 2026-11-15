@@ -5,23 +5,21 @@ import { DATE_REGEX, TIME_REGEX } from '../utils/time.js';
 
 const trimmed = (max) => z.string().trim().max(max);
 
-export const RequestOtpSchema = z.object({ phone: z.string().min(10).max(16) });
-
-export const VerifyOtpSchema = z.object({
-  phone: z.string().min(10).max(16),
-  otp: z.string().trim().regex(/^\d{4,6}$/, 'OTP must be 4-6 digits'),
-});
-
 const emailField = z.string().trim().email('Please enter a valid email').max(120);
 const otpField = z.string().trim().regex(/^\d{4,6}$/, 'Code must be 4-6 digits');
 const passwordField = z.string().min(8, 'Password must be at least 8 characters').max(64);
 
+const phoneField = z.string().trim().min(10, 'Please enter a valid 10-digit mobile number').max(16);
+
 export const EmailOtpRequestSchema = z.object({ email: emailField });
 
-export const EmailOtpVerifySchema = z.object({ email: emailField, otp: otpField, name: trimmed(80).optional() });
+export const LoginOtpRequestSchema = z.object({ email: emailField, phone: phoneField });
+
+export const EmailOtpVerifySchema = z.object({ email: emailField, phone: phoneField, otp: otpField, name: trimmed(80).optional() });
 
 export const EmailSignupSchema = z.object({
   email: emailField,
+  phone: phoneField,
   password: passwordField,
   name: trimmed(80).optional(),
   otp: otpField,
@@ -70,16 +68,6 @@ export const FamilyMemberSchema = z.object({
   nakshatra: trimmed(40).optional().default(''),
 });
 
-export const handleRequestOtp = asyncHandler(async (req, res) => {
-  const data = await authService.requestOtp(req.body.phone);
-  res.json({ success: true, data });
-});
-
-export const handleVerifyOtp = asyncHandler(async (req, res) => {
-  const data = await authService.verifyOtp(req.body.phone, req.body.otp);
-  res.json({ success: true, data });
-});
-
 export const handleEmailSignup = asyncHandler(async (req, res) => {
   const data = await authService.signupWithEmail(req.body);
   res.status(201).json({ success: true, data });
@@ -91,12 +79,12 @@ export const handleEmailLogin = asyncHandler(async (req, res) => {
 });
 
 export const handleEmailOtpRequest = asyncHandler(async (req, res) => {
-  const data = await authService.requestEmailOtp(req.body.email);
+  const data = await authService.requestEmailOtp(req.body.email, req.body.phone);
   res.json({ success: true, data });
 });
 
 export const handleEmailOtpVerify = asyncHandler(async (req, res) => {
-  const data = await authService.verifyEmailOtp(req.body.email, req.body.otp, req.body.name);
+  const data = await authService.verifyEmailOtp(req.body.email, req.body.phone, req.body.otp, req.body.name);
   res.json({ success: true, data });
 });
 

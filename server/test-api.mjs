@@ -40,15 +40,20 @@ const run = async () => {
   const puja = pujas.json.data.find((p) => p.modes.includes('ONLINE'));
 
   const phone = `9${String(Date.now()).slice(-9)}`;
-  const otpReq = await call('POST', '/auth/request-otp', { body: { phone } });
-  check('request otp', otpReq.status === 200, otpReq.json);
+  const userEmail = `user${Date.now()}@example.com`;
+  const noPhone = await call('POST', '/auth/email/request-otp', { body: { email: userEmail } });
+  check('login code requires mobile number', noPhone.status === 400, noPhone.json);
+  const badPhone = await call('POST', '/auth/email/request-otp', { body: { email: userEmail, phone: '12345' } });
+  check('invalid mobile rejected', badPhone.status === 400, badPhone.json);
+  const otpReq = await call('POST', '/auth/email/request-otp', { body: { email: userEmail, phone } });
+  check('request email otp', otpReq.status === 200 && otpReq.json.data.isNewUser, otpReq.json);
   const code = otpReq.json.data?.devOtp;
 
-  const badOtp = await call('POST', '/auth/verify-otp', { body: { phone, otp: '000000' === code ? '111111' : '000000' } });
+  const badOtp = await call('POST', '/auth/email/verify-otp', { body: { email: userEmail, phone, otp: '000000' === code ? '111111' : '000000' } });
   check('wrong otp rejected', badOtp.status === 400, badOtp.json);
 
-  const verify = await call('POST', '/auth/verify-otp', { body: { phone, otp: code } });
-  check('verify otp', verify.status === 200 && verify.json.data.isNewUser, verify.json);
+  const verify = await call('POST', '/auth/email/verify-otp', { body: { email: userEmail, phone, otp: code } });
+  check('verify email otp', verify.status === 200 && verify.json.data.isNewUser && verify.json.data.user.phone && verify.json.data.user.email === userEmail, verify.json);
   const token = verify.json.data.token;
 
   const date = await nextOpenDate(puja.id);
@@ -127,25 +132,31 @@ const run = async () => {
   }
 
   const email = `devotee${Date.now()}@example.com`;
-  const noCode = await call('POST', '/auth/signup-email', { body: { email, password: 'secret123', name: 'Email User', otp: '123456' } });
+  const phone2 = `8${String(Date.now()).slice(-9)}`;
+  const noCode = await call('POST', '/auth/signup-email', { body: { email, phone: phone2, password: 'secret123', name: 'Email User', otp: '123456' } });
   check('signup without valid email code rejected', noCode.status === 400, noCode.json);
-  const signupCode = await call('POST', '/auth/email/request-otp', { body: { email } });
+  const usedPhone = await call('POST', '/auth/email/request-otp', { body: { email, phone } });
+  check('mobile already used by another email rejected', usedPhone.status === 409, usedPhone.json);
+  const signupCode = await call('POST', '/auth/email/request-otp', { body: { email, phone: phone2 } });
   check('email code requested', signupCode.status === 200 && signupCode.json.data.isNewUser, signupCode.json);
   const signup = await call('POST', '/auth/signup-email', {
-    body: { email, password: 'secret123', name: 'Email User', otp: signupCode.json.data.devOtp },
+    body: { email, phone: phone2, password: 'secret123', name: 'Email User', otp: signupCode.json.data.devOtp },
   });
-  check('email signup', signup.status === 201 && signup.json.data.user.emailVerified && !signup.json.data.user.profileCompleted, signup.json);
-  const dup = await call('POST', '/auth/signup-email', { body: { email, password: 'secret123', otp: '123456' } });
+  check('email signup', signup.status === 201 && signup.json.data.user.phone && signup.json.data.user.emailVerified && !signup.json.data.user.profileCompleted, signup.json);
+  const dup = await call('POST', '/auth/signup-email', { body: { email, phone: phone2, password: 'secret123', otp: '123456' } });
   check('duplicate email rejected', dup.status === 409, dup.json);
 
   const otpEmail = `otp${Date.now()}@example.com`;
-  const otpReq2 = await call('POST', '/auth/email/request-otp', { body: { email: otpEmail } });
-  const tooSoon = await call('POST', '/auth/email/request-otp', { body: { email: otpEmail } });
+  const phone3 = `7${String(Date.now()).slice(-9)}`;
+  const otpReq2 = await call('POST', '/auth/email/request-otp', { body: { email: otpEmail, phone: phone3 } });
+  const tooSoon = await call('POST', '/auth/email/request-otp', { body: { email: otpEmail, phone: phone3 } });
   check('email code resend throttled', tooSoon.status === 429, tooSoon.json);
-  const otpLogin = await call('POST', '/auth/email/verify-otp', { body: { email: otpEmail, otp: otpReq2.json.data.devOtp } });
+  const otpLogin = await call('POST', '/auth/email/verify-otp', { body: { email: otpEmail, phone: phone3, otp: otpReq2.json.data.devOtp } });
   check('email OTP login creates account', otpLogin.status === 200 && otpLogin.json.data.isNewUser, otpLogin.json);
-  const reused = await call('POST', '/auth/email/verify-otp', { body: { email: otpEmail, otp: otpReq2.json.data.devOtp } });
+  const reused = await call('POST', '/auth/email/verify-otp', { body: { email: otpEmail, phone: phone3, otp: otpReq2.json.data.devOtp } });
   check('email code cannot be reused', reused.status === 400, reused.json);
+  const wrongPhone = await call('POST', '/auth/email/request-otp', { body: { email: otpEmail, phone: phone2 } });
+  check('email registered with different mobile rejected', wrongPhone.status === 409, wrongPhone.json);
 
   const unknownReset = await call('POST', '/auth/password/forgot', { body: { email: `nobody${Date.now()}@example.com` } });
   check('reset for unknown email rejected', unknownReset.status === 404, unknownReset.json);

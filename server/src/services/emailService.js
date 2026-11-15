@@ -29,7 +29,7 @@ const otpHtml = (code, purpose) => `<!doctype html>
 
 export const sendOtpEmail = async (email, code, purpose) => {
   if (!isResendConfigured()) {
-    if (config.isProduction) throw new AppError('Email login is temporarily unavailable. Please use mobile OTP.', 503);
+    if (config.isProduction) throw new AppError('Email codes are temporarily unavailable. Please try again later or login with your password.', 503);
     console.log(`[Email disabled] ${purpose} OTP for ${email}: ${code}`);
     return;
   }

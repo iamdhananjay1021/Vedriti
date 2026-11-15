@@ -11,7 +11,6 @@ import type {
   FamilyMember,
   KundliRequest,
   Order,
-  OtpRequestResult,
   PublicSettings,
   ServiceType,
   UserProfile,
@@ -127,12 +126,10 @@ export interface EmailOtpResult {
 }
 
 export const api = {
-  requestOtp: (phone: string) => request<OtpRequestResult>('POST', '/auth/request-otp', { phone }, false),
-  verifyOtp: (phone: string, otp: string) => request<AuthResult>('POST', '/auth/verify-otp', { phone, otp }, false),
-  requestEmailOtp: (email: string) => request<EmailOtpResult>('POST', '/auth/email/request-otp', { email }, false),
-  verifyEmailOtp: (email: string, otp: string) => request<AuthResult>('POST', '/auth/email/verify-otp', { email, otp }, false),
-  signupEmail: (email: string, password: string, otp: string, name?: string) =>
-    request<AuthResult>('POST', '/auth/signup-email', { email, password, otp, name }, false),
+  requestEmailOtp: (email: string, phone: string) => request<EmailOtpResult>('POST', '/auth/email/request-otp', { email, phone }, false),
+  verifyEmailOtp: (email: string, phone: string, otp: string) => request<AuthResult>('POST', '/auth/email/verify-otp', { email, phone, otp }, false),
+  signupEmail: (email: string, phone: string, password: string, otp: string, name?: string) =>
+    request<AuthResult>('POST', '/auth/signup-email', { email, phone, password, otp, name }, false),
   forgotPassword: (email: string) => request<EmailOtpResult>('POST', '/auth/password/forgot', { email }, false),
   resetPassword: (email: string, otp: string, newPassword: string) =>
     request<AuthResult>('POST', '/auth/password/reset', { email, otp, newPassword }, false),

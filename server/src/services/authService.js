@@ -7,7 +7,6 @@ import { Otp } from '../models/Otp.js';
 import { Booking } from '../models/Booking.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { normalizePhone } from '../utils/ids.js';
-import { isSmsEnabled, sendOtpSms } from './smsService.js';
 import { sendOtpEmail } from './emailService.js';
 import { Media } from '../models/Media.js';
 import { detectImageType, mediaIdFromUrl, mediaUrl } from '../utils/media.js';
@@ -43,7 +42,7 @@ const authResult = async (user, isNewUser) => {
   return { token: signUserToken(user), user: user.toPublic(), isNewUser };
 };
 
-const channelReady = (channel) => (channel === 'sms' ? isSmsEnabled() : isResendConfigured());
+const channelReady = () => isResendConfigured();
 
 const otpKey = (channel, target, purpose) => `${purpose}:${channel}:${target}`;
 
@@ -60,8 +59,7 @@ const issueOtp = async ({ channel, target, purpose }) => {
   const code = randomCode();
   const send = true;
   if (send) {
-    if (channel === 'sms') await sendOtpSms(target, code);
-    else await sendOtpEmail(target, code, purpose);
+    await sendOtpEmail(target, code, purpose);
   }
 
   const now = new Date();
@@ -82,7 +80,7 @@ const issueOtp = async ({ channel, target, purpose }) => {
   return {
     resendInSeconds: config.otpResendSeconds,
     expiresInMinutes: config.otpExpiryMinutes,
-    devOtp: !config.isProduction && send && !channelReady(channel) ? code : undefined,
+    devOtp: !config.isProduction && !channelReady() ? code : undefined,
   };
 };
 
@@ -123,46 +121,53 @@ const findOrCreate = async (filter, data) => {
   return { user, isNewUser };
 };
 
-export const requestOtp = async (rawPhone) => {
-  const phone = requirePhone(rawPhone);
-  const existingUser = await User.findOne({ phone }).select('isBlocked');
-  if (existingUser?.isBlocked) throw new AppError(BLOCKED_MESSAGE, 403);
-  const result = await issueOtp({ channel: 'sms', target: phone, purpose: 'login' });
-  return { phone, isNewUser: !existingUser, ...result };
+const checkIdentity = async (email, phone) => {
+  const [byEmail, byPhone] = await Promise.all([User.findOne({ email }), User.findOne({ phone })]);
+  if (byEmail?.isBlocked || byPhone?.isBlocked) throw new AppError(BLOCKED_MESSAGE, 403);
+  if (byEmail) {
+    if (byEmail.phone && byEmail.phone !== phone) {
+      throw new AppError('This email is registered with a different mobile number. Please use the same number.', 409);
+    }
+    if (!byEmail.phone && byPhone) throw new AppError('This mobile number is linked to another account.', 409);
+  } else if (byPhone) {
+    throw new AppError('This mobile number is already registered with another email. Please login with that email.', 409);
+  }
+  return byEmail;
 };
 
-export const verifyOtp = async (rawPhone, code) => {
-  const phone = requirePhone(rawPhone);
-  await consumeOtp({ channel: 'sms', target: phone, purpose: 'login', code });
-  const { user, isNewUser } = await findOrCreate({ phone }, { phone, authProvider: 'phone' });
-  return authResult(user, isNewUser);
-};
-
-export const requestEmailOtp = async (rawEmail) => {
+export const requestEmailOtp = async (rawEmail, rawPhone) => {
   const email = cleanEmail(rawEmail);
-  const existingUser = await User.findOne({ email }).select('isBlocked');
-  if (existingUser?.isBlocked) throw new AppError(BLOCKED_MESSAGE, 403);
+  const phone = requirePhone(rawPhone);
+  const existing = await checkIdentity(email, phone);
   const result = await issueOtp({ channel: 'email', target: email, purpose: 'login' });
-  return { email, isNewUser: !existingUser, ...result };
+  return { email, phone, isNewUser: !existing, ...result };
 };
 
-export const verifyEmailOtp = async (rawEmail, code, name) => {
+export const verifyEmailOtp = async (rawEmail, rawPhone, code, name) => {
   const email = cleanEmail(rawEmail);
+  const phone = requirePhone(rawPhone);
+  await checkIdentity(email, phone);
   await consumeOtp({ channel: 'email', target: email, purpose: 'login', code });
-  const { user, isNewUser } = await findOrCreate({ email }, { email, authProvider: 'email', name: name?.trim() || '' });
+  const { user, isNewUser } = await findOrCreate(
+    { email },
+    { email, phone, authProvider: 'email', emailVerified: true, name: name?.trim() || '' }
+  );
+  if (!user.phone) user.phone = phone;
   if (!user.emailVerified) user.emailVerified = true;
   return authResult(user, isNewUser);
 };
 
-export const signupWithEmail = async ({ email: rawEmail, password, name, otp }) => {
+export const signupWithEmail = async ({ email: rawEmail, phone: rawPhone, password, name, otp }) => {
   const email = cleanEmail(rawEmail);
+  const phone = requirePhone(rawPhone);
   if (await User.exists({ email })) {
     throw new AppError('This email is already registered. Please login instead.', 409);
   }
+  await checkIdentity(email, phone);
   await consumeOtp({ channel: 'email', target: email, purpose: 'login', code: otp });
   const { user, isNewUser } = await findOrCreate(
     { email },
-    { email, authProvider: 'email', name: name?.trim() || '', password: await hashPassword(password), emailVerified: true }
+    { email, phone, authProvider: 'email', name: name?.trim() || '', password: await hashPassword(password), emailVerified: true }
   );
   return authResult(user, isNewUser);
 };

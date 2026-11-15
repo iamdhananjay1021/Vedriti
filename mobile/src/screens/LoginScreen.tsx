@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Eye, EyeOff, Mail, Smartphone } from 'lucide-react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 import { BrandMark } from '../components/common/BrandLogo';
 import { Button, Field } from '../components/ui';
@@ -21,11 +21,10 @@ import { useAuth } from '../context/AuthContext';
 import { isValidEmail, isValidPhone, localPhone } from '../utils/format';
 import { WEBSITE_URL } from '../config/api';
 
-type Method = 'phone' | 'email';
 type EmailMode = 'otp' | 'password' | 'signup' | 'forgot';
 
 const EMAIL_TITLES: Record<EmailMode, string> = {
-  otp: 'Login with email code',
+  otp: 'Login / Sign up with email code',
   password: 'Login with password',
   signup: 'Create account',
   forgot: 'Reset password',
@@ -35,7 +34,6 @@ const errorText = (e: unknown) => (e instanceof Error ? e.message : 'Something w
 
 export const LoginScreen: React.FC = () => {
   const { completeLogin } = useAuth();
-  const [method, setMethod] = useState<Method>('phone');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendIn, setResendIn] = useState(0);
@@ -43,8 +41,6 @@ export const LoginScreen: React.FC = () => {
   const codeRef = useRef<TextInput>(null);
 
   const [phone, setPhone] = useState('');
-  const [otpSentTo, setOtpSentTo] = useState<string | null>(null);
-  const [otp, setOtp] = useState('');
 
   const [emailMode, setEmailMode] = useState<EmailMode>('otp');
   const [email, setEmail] = useState('');
@@ -65,17 +61,10 @@ export const LoginScreen: React.FC = () => {
     setError(null);
     setDevOtp(undefined);
     setResendIn(0);
-    setOtp('');
-    setOtpSentTo(null);
     setEmailCode('');
     setEmailCodeSent(false);
     setPassword('');
     setConfirm('');
-  };
-
-  const switchMethod = (next: Method) => {
-    setMethod(next);
-    resetCodes();
   };
 
   const switchEmailMode = (next: EmailMode) => {
@@ -97,32 +86,14 @@ export const LoginScreen: React.FC = () => {
 
   const focusCode = () => setTimeout(() => codeRef.current?.focus(), 300);
 
-  const sendPhoneOtp = () => {
-    const digits = localPhone(phone);
-    if (!isValidPhone(digits)) return setError('Please enter a valid 10-digit mobile number');
-    run(async () => {
-      const res = await api.requestOtp(digits);
-      setOtpSentTo(digits);
-      setOtp('');
-      setDevOtp(res.devOtp);
-      setResendIn(res.resendInSeconds);
-      focusCode();
-    });
-  };
-
-  const verifyPhoneOtp = (code = otp) => {
-    if (!otpSentTo) return;
-    if (!/^\d{4,6}$/.test(code)) return setError('Please enter the OTP sent to your mobile');
-    run(async () => {
-      await completeLogin(await api.verifyOtp(otpSentTo, code));
-    });
-  };
+  const needsPhone = emailMode === 'otp' || emailMode === 'signup';
 
   const sendEmailCode = () => {
     if (!isValidEmail(email)) return setError('Please enter a valid email address');
     if (emailMode === 'signup' && name.trim().length < 2) return setError('Please enter your name');
+    if (needsPhone && !isValidPhone(localPhone(phone))) return setError('Please enter a valid 10-digit mobile number');
     run(async () => {
-      const res = emailMode === 'forgot' ? await api.forgotPassword(email.trim()) : await api.requestEmailOtp(email.trim());
+      const res = emailMode === 'forgot' ? await api.forgotPassword(email.trim()) : await api.requestEmailOtp(email.trim(), localPhone(phone));
       if (emailMode === 'signup' && res.isNewUser === false) {
         setEmailMode('otp');
       }
@@ -155,7 +126,7 @@ export const LoginScreen: React.FC = () => {
 
     if (emailMode === 'otp') {
       return run(async () => {
-        await completeLogin(await api.verifyEmailOtp(cleanEmail, emailCode));
+        await completeLogin(await api.verifyEmailOtp(cleanEmail, localPhone(phone), emailCode));
       });
     }
 
@@ -164,7 +135,7 @@ export const LoginScreen: React.FC = () => {
 
     if (emailMode === 'signup') {
       return run(async () => {
-        await completeLogin(await api.signupEmail(cleanEmail, password, emailCode, name.trim()));
+        await completeLogin(await api.signupEmail(cleanEmail, localPhone(phone), password, emailCode, name.trim()));
       });
     }
 
@@ -239,37 +210,6 @@ export const LoginScreen: React.FC = () => {
     </>
   );
 
-  const renderPhone = () =>
-    otpSentTo ? (
-      <View>
-        <Text style={styles.info}>
-          Enter the OTP sent to <Text style={styles.bold}>+91 {otpSentTo}</Text>
-        </Text>
-        {codeField(otp, setOtp, (c) => verifyPhoneOtp(c))}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Button title="Verify & Continue" onPress={() => verifyPhoneOtp()} loading={loading} />
-        {resendRow(resetCodes, 'Change number', sendPhoneOtp)}
-      </View>
-    ) : (
-      <View>
-        <Field
-          label="Mobile number"
-          prefix="+91"
-          value={phone}
-          onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          maxLength={10}
-          placeholder="10-digit mobile number"
-          returnKeyType="done"
-          onSubmitEditing={sendPhoneOtp}
-        />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Button title="Send OTP" onPress={sendPhoneOtp} loading={loading} />
-        <Text style={styles.note}>New here? Your account is created automatically after OTP verification.</Text>
-      </View>
-    );
-
   const renderEmail = () => {
     const needsCode = emailMode !== 'password';
     const awaitingCode = needsCode && !emailCodeSent;
@@ -289,9 +229,22 @@ export const LoginScreen: React.FC = () => {
           autoComplete="email"
           placeholder="you@example.com"
         />
+        {needsPhone ? (
+          <Field
+            label="Mobile number"
+            prefix="+91"
+            value={phone}
+            onChangeText={(v) => setPhone(v.replace(/D/g, '').slice(0, 10))}
+            editable={!emailCodeSent}
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            maxLength={10}
+            placeholder="10-digit mobile number"
+          />
+        ) : null}
         {emailCodeSent ? (
           <Text style={styles.info}>
-            We sent a code to <Text style={styles.bold}>{email.trim()}</Text>. Check your inbox and spam folder.
+            We sent a 6-digit code to <Text style={styles.bold}>{email.trim()}</Text>. Check your inbox and spam folder.
           </Text>
         ) : null}
         {emailMode === 'otp' && emailCodeSent ? codeField(emailCode, setEmailCode) : null}
@@ -360,25 +313,7 @@ export const LoginScreen: React.FC = () => {
             </View>
 
             <View style={styles.card}>
-              <View style={styles.tabs}>
-                {(['phone', 'email'] as Method[]).map((m) => {
-                  const active = method === m;
-                  const Icon = m === 'phone' ? Smartphone : Mail;
-                  return (
-                    <TouchableOpacity
-                      key={m}
-                      onPress={() => switchMethod(m)}
-                      style={[styles.tab, active && styles.tabActive]}
-                      accessibilityRole="tab"
-                      accessibilityState={{ selected: active }}
-                    >
-                      <Icon size={16} color={active ? '#FFF' : THEME.colors.bodyText} />
-                      <Text style={[styles.tabText, active && styles.tabTextActive]}>{m === 'phone' ? 'Mobile OTP' : 'Email'}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              {method === 'phone' ? renderPhone() : renderEmail()}
+              {renderEmail()}
             </View>
 
             <Text style={styles.legal}>
@@ -412,11 +347,6 @@ const styles = StyleSheet.create({
   brand: { fontSize: 30, fontWeight: '800', color: THEME.colors.royalCrimson, marginTop: 12, fontFamily: THEME.typography.serif },
   tagline: { fontSize: 14, color: THEME.colors.bodyText, marginTop: 4, textAlign: 'center' },
   card: { backgroundColor: '#FFF', borderRadius: 24, padding: 18, borderWidth: 1, borderColor: THEME.colors.borderLight, ...THEME.shadows.royal },
-  tabs: { flexDirection: 'row', backgroundColor: THEME.colors.softPeach, borderRadius: 999, padding: 4, marginBottom: 18 },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 999 },
-  tabActive: { backgroundColor: THEME.colors.primarySaffron },
-  tabText: { fontWeight: '700', color: THEME.colors.bodyText },
-  tabTextActive: { color: '#FFF' },
   modeTitle: { fontSize: 16, fontWeight: '800', color: THEME.colors.heading, marginBottom: 12 },
   info: { fontSize: 13.5, color: THEME.colors.bodyText, marginBottom: 12 },
   bold: { fontWeight: '800', color: THEME.colors.heading },

@@ -6,11 +6,9 @@ import { validateBody } from '../middlewares/validateRequest.js';
 
 const router = Router();
 
-router.post('/request-otp', authLimiter, validateBody(auth.RequestOtpSchema), auth.handleRequestOtp);
-router.post('/verify-otp', authLimiter, validateBody(auth.VerifyOtpSchema), auth.handleVerifyOtp);
 router.post('/signup-email', authLimiter, validateBody(auth.EmailSignupSchema), auth.handleEmailSignup);
 router.post('/login-email', authLimiter, validateBody(auth.EmailLoginSchema), auth.handleEmailLogin);
-router.post('/email/request-otp', authLimiter, validateBody(auth.EmailOtpRequestSchema), auth.handleEmailOtpRequest);
+router.post('/email/request-otp', authLimiter, validateBody(auth.LoginOtpRequestSchema), auth.handleEmailOtpRequest);
 router.post('/email/verify-otp', authLimiter, validateBody(auth.EmailOtpVerifySchema), auth.handleEmailOtpVerify);
 router.post('/password/forgot', authLimiter, validateBody(auth.EmailOtpRequestSchema), auth.handleForgotPassword);
 router.post('/password/reset', authLimiter, validateBody(auth.PasswordResetSchema), auth.handleResetPassword);
