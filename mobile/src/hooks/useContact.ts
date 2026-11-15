@@ -14,7 +14,7 @@ export const useContact = () => {
   const { settings } = useAppData();
   const phone = settings?.supportPhone || '';
   const whatsapp = settings?.whatsappNumber || phone;
-  const email = settings?.supportEmail || 'support@vedrit.in';
+  const email = settings?.supportEmail || 'officialvedrit@gmail.com';
   const panditName = settings?.panditName || 'Pandit Ji';
 
   const call = useCallback(() => {

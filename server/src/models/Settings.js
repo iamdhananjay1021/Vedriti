@@ -25,7 +25,7 @@ const SettingsSchema = new Schema(
     templeAddress: { type: String, default: '' },
     supportPhone: { type: String, default: '' },
     whatsappNumber: { type: String, default: '' },
-    supportEmail: { type: String, default: 'support@vedrit.in' },
+    supportEmail: { type: String, default: 'officialvedrit@gmail.com' },
     schedule: { type: [DayScheduleSchema], default: defaultSchedule },
     slotIntervalMinutes: { type: Number, default: 30, enum: [30, 60] },
     bufferMinutes: { type: Number, default: 30, min: 0, max: 240 },

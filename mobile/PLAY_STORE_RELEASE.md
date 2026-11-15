@@ -9,7 +9,7 @@
 | Admin panel | `https://vedrit.in/admin` |
 | Privacy policy URL | `https://vedrit.in/privacy-policy` |
 | Account deletion URL | `https://vedrit.in/delete-account` (also in app: Account → Delete account) |
-| Support email | `support@vedrit.in` |
+| Support email | `officialvedrit@gmail.com` |
 | Play track | Closed testing (`alpha`) |
 | Store graphics | `mobile/store-assets/` (512×512 icon, 1024×500 feature graphic) |
 
@@ -30,7 +30,7 @@ Google reviewers log in and use the app, so the API must be live.
 4. **Website + admin** — deploy `admin/` on Vercel with `NEXT_PUBLIC_API_URL=https://api.vedrit.in/api/v1`, attach `vedrit.in`.
 5. **Admin panel → Home Screen:** add banners (with photo upload), announcement, today's panchang and section toggles. Product and puja photos are uploaded from **Pujas & Products**. Images are stored in MongoDB and served from `/api/v1/media/<id>`, so no extra storage service is needed.
 6. **Admin panel → Settings:** set Pandit Ji's name, phone, WhatsApp, working hours, fees. Without this the app shows "Pandit Ji" and no call number.
-7. Create the mailbox `support@vedrit.in`.
+7. Create the mailbox `officialvedrit@gmail.com`.
 
 ## 2. Build the AAB (Expo EAS)
 

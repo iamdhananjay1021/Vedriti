@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const SUPPORT_EMAIL = 'support@vedrit.in';
+export const SUPPORT_EMAIL = 'officialvedrit@gmail.com';
 
 interface LegalPageProps {
   title: string;

@@ -256,5 +256,5 @@ export const SEED_SETTINGS = {
   panditTitle: 'Vedic Acharya • Karmakand & Jyotish',
   panditBio: 'Performing Vedic pujas, sanskars and kundli consultations with traditional vidhi.',
   experienceYears: 20,
-  supportEmail: 'support@vedrit.in',
+  supportEmail: 'officialvedrit@gmail.com',
 };
