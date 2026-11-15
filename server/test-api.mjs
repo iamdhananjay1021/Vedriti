@@ -1,6 +1,6 @@
 const BASE = process.env.API_URL || 'http://localhost:5001/api/v1';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@vedrit.in';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'vedrit-admin';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 
 let failures = 0;
 

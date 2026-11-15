@@ -41,8 +41,6 @@ export const config = {
   mongoUri: required('MONGODB_URI', 'mongodb://127.0.0.1:27017/vedrit'),
   jwtSecret: required('JWT_SECRET', 'vedrit_local_development_secret_change_me'),
   jwtExpiresIn: read('JWT_EXPIRES_IN') || '30d',
-  adminEmail: (read('ADMIN_EMAIL') || (isProduction ? '' : 'admin@vedrit.in')).toLowerCase(),
-  adminPassword: read('ADMIN_PASSWORD') || (isProduction ? '' : 'vedrit-admin'),
   otpLength: 6,
   otpExpiryMinutes: parseInt(read('OTP_EXPIRY_MINUTES') || '10', 10),
   otpMaxAttempts: 5,

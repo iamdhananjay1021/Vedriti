@@ -19,7 +19,7 @@ Google reviewers log in and use the app, so the API must be live.
 
 1. **Database** — create a free MongoDB Atlas cluster, copy the connection string.
 2. **API** — deploy `server/` (Render / Railway / VPS, Node 20+). Fill `server/.env.example` as environment variables (empty values are fine until you have the credentials):
-   - `MONGODB_URI`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PUBLIC_API_URL=https://api.vedrit.in`
+   - `MONGODB_URI`, `JWT_SECRET`, `PUBLIC_API_URL=https://api.vedrit.in`
    - Email OTP: `RESEND_API_KEY` + `EMAIL_FROM` (verify vedrit.in in the Resend dashboard first).
    - Mobile OTP: `SMS_PROVIDER=fast2sms` + `FAST2SMS_API_KEY`.
    - Reviewer/developer: set `DEV_USER_PASSWORD`; the reviewer logs in with email + password (`dev@vedrit.in`). OTPs are always random, stored hashed in MongoDB and delivered by SMS/email.
@@ -95,4 +95,4 @@ First AAB must be uploaded manually. Then: Play Console → API access → servi
 
 - Real SMS OTP (`SMS_PROVIDER=fast2sms`) and email OTP (Resend).
 - Razorpay live keys + webhook.
-- Strong `ADMIN_PASSWORD`, unique `JWT_SECRET`.
+- Unique `JWT_SECRET`. Admins live only in MongoDB (`npm run admin:create`).

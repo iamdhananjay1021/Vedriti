@@ -54,18 +54,13 @@ export const AdminLoginSchema = z.object({ email: z.string().trim().email(), pas
 export const adminLogin = asyncHandler(async (req, res) => {
   const email = req.body.email.toLowerCase();
   const admin = await Admin.findOne({ email, isActive: true });
-  let ok = false;
-  if (admin) {
-    ok = await bcrypt.compare(req.body.password, admin.password);
-  } else {
-    ok = Boolean(config.adminEmail && config.adminPassword) && safeEqual(email, config.adminEmail) && safeEqual(req.body.password, config.adminPassword);
-  }
-  if (!ok) throw new AppError('Invalid admin email or password', 401);
-  res.json({ success: true, data: { token: signAdminToken(email), email, role: admin ? admin.role : 'admin' } });
+  const ok = admin ? await bcrypt.compare(req.body.password, admin.password) : false;
+  if (!admin || !ok) throw new AppError('Invalid admin email or password', 401);
+  res.json({ success: true, data: { token: signAdminToken(email), email, role: admin.role } });
 });
 
 export const adminMe = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: { email: req.adminEmail || config.adminEmail } });
+  res.json({ success: true, data: { email: req.adminEmail || '' } });
 });
 
 export const getStats = asyncHandler(async (req, res) => {
