@@ -21,8 +21,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
@@ -56,6 +56,12 @@
           "microphonePermission": false
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7a39791e-88b7-46ac-af6a-3c2d5f62e00a"
+      }
+    },
+    "owner": "dhananjaypandey8182"
   }
 }
