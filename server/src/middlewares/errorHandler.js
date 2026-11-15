@@ -43,7 +43,7 @@ export const errorHandler = (err, req, res, next) => {
 
   if (statusCode >= 500) {
     console.error('[Server Error]', err);
-    if (config.isProduction) message = 'Something went wrong. Please try again.';
+    if (config.isProduction && !err.isOperational) message = 'Something went wrong. Please try again.';
   }
 
   res.status(statusCode).json({ success: false, message });
