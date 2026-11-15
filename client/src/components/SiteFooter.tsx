@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
 
-export const SUPPORT_EMAIL = "support@vedrit.in";
+export const SUPPORT_EMAIL = "officialvedrit@gmail.com";
 
 const LEGAL = [
   { href: "/privacy-policy", label: "Privacy Policy" },
