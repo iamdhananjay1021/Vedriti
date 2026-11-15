@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ImageBackground, Linking, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, ImageBackground, Linking, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,9 +16,6 @@ import { WEBSITE_URL } from '../config/api';
 type Mode = 'otp' | 'password' | 'signup' | 'forgot';
 
 const REMEMBER_KEY = 'vedrit.login.remember';
-const BG_W = 1080;
-const BG_H = 2400;
-const MANDALA_CY = 420;
 
 const HEADINGS: Record<Mode, { title: string; sub: string }> = {
   otp: { title: 'Login', sub: 'Welcome back, enter your email and mobile number. We will email you a 6-digit code.' },
@@ -60,10 +57,7 @@ GlassField.displayName = 'GlassField';
 
 export const LoginScreen: React.FC = () => {
   const { completeLogin } = useAuth();
-  const { width, height } = useWindowDimensions();
   const { inset } = useKeyboardInset();
-  const scale = Math.max(width / BG_W, height / BG_H);
-  const centerY = (height - BG_H * scale) / 2 + MANDALA_CY * scale;
   const typing = inset > 0;
   const [mode, setMode] = useState<Mode>('otp');
   const [error, setError] = useState<string | null>(null);
@@ -326,13 +320,17 @@ export const LoginScreen: React.FC = () => {
     <ImageBackground source={require('../../assets/images/login-bg.jpg')} style={styles.flex} resizeMode="cover">
       <StatusBar style="light" />
       <SafeAreaView style={styles.flex}>
-        {!compact ? (
-          <View pointerEvents="none" style={[styles.header, { top: centerY - 24 }]}>
-            <BrandLogo size={44} light />
+        <View style={[styles.body, { paddingTop: compact ? 8 : 20, paddingBottom: typing ? inset + 8 : compact ? 16 : 56 }]}>
+          <View style={styles.card}>
+            {!compact ? (
+              <View style={styles.cardBrand}>
+                <BrandLogo size={46} light />
+                <Text style={styles.tagline}>Puja  •  Appointment  •  Kundli</Text>
+                <View style={styles.divider} />
+              </View>
+            ) : null}
+            {codeSent && mode !== 'password' ? renderVerify() : renderForm()}
           </View>
-        ) : null}
-        <View style={[styles.body, { paddingTop: compact ? 8 : centerY + 56 * scale + 24, paddingBottom: typing ? inset + 8 : compact ? 16 : 64 }]}>
-          <View style={styles.card}>{codeSent && mode !== 'password' ? renderVerify() : renderForm()}</View>
         </View>
         {!compact ? (
           <Text style={styles.legal}>
@@ -351,7 +349,9 @@ const WHITE = '#FFFFFF';
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   body: { flex: 1, paddingHorizontal: 20, justifyContent: 'center' },
-  header: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  cardBrand: { alignItems: 'center', marginBottom: 18 },
+  tagline: { color: '#F7D58B', fontSize: 11.5, fontWeight: '700', letterSpacing: 1.1, marginTop: 8 },
+  divider: { alignSelf: 'stretch', height: 1, backgroundColor: 'rgba(255,255,255,0.22)', marginTop: 16 },
   card: {
     borderRadius: 28,
     padding: 22,
