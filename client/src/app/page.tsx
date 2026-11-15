@@ -141,7 +141,7 @@ function SectionHead({ eyebrow, title, text }: { eyebrow: string; title: string;
   return (
     <div className="max-w-2xl">
       <p className="text-sm font-bold tracking-wide text-saffron">{eyebrow}</p>
-      <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-heading">{title}</h2>
+      <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-heading sm:text-3xl">{title}</h2>
       {text ? <p className="mt-3 leading-relaxed text-body">{text}</p> : null}
     </div>
   );
@@ -153,15 +153,15 @@ export default function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
 
       <section className="overflow-hidden bg-gradient-to-b from-[#FFF3E0] via-bg to-bg">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-12 sm:px-6 md:grid-cols-2 md:pt-20">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-12 pt-8 sm:px-6 sm:pb-16 md:grid-cols-2 md:pt-20">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-surface px-3.5 py-1.5 text-xs font-bold text-saffron ring-1 ring-line">
               <span className="h-2 w-2 rounded-full bg-saffron" /> Launching soon on Google Play
             </span>
-            <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-heading sm:text-5xl">
+            <h1 className="mt-4 text-[2rem] font-extrabold leading-[1.12] tracking-tight text-heading sm:mt-5 sm:text-5xl">
               Pandit Ji, now <span className="text-saffron">one tap away</span>
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-body">
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-body sm:mt-5 sm:text-lg">
               Book pujas and appointments, order puja kits and send your kundli details to Pandit Ji, all from one simple app.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -197,23 +197,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
+      <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6 sm:py-16">
         <SectionHead eyebrow="What you can do" title="Everything for your puja and guidance" />
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid sm:mt-10 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="rounded-2xl border border-line bg-surface p-6">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-soft text-saffron">
+            <div key={title} className="grid grid-cols-[auto_1fr] items-start gap-x-4 rounded-2xl border border-line bg-surface p-5 sm:block sm:p-6">
+              <span className="row-span-2 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-soft text-saffron sm:row-span-1">
                 <Icon className="h-5 w-5" aria-hidden />
               </span>
-              <h3 className="mt-4 text-lg font-bold text-heading">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-body">{text}</p>
+              <h3 className="text-base font-bold text-heading sm:mt-4 sm:text-lg">{title}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-body sm:mt-2">{text}</p>
             </div>
           ))}
         </div>
       </section>
 
       <section id="pujas" className="scroll-mt-20 bg-surface">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           <SectionHead
             eyebrow="Pujas"
             title="Authentic pujas, performed by Pandit Ji"
@@ -251,7 +251,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="kundli" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
+      <section id="kundli" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6 sm:py-16">
         <SectionHead
           eyebrow="Kundli & Jyotish"
           title="A personal reading, not an automated report"
@@ -259,12 +259,12 @@ export default function HomePage() {
         />
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {KUNDLI.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="rounded-2xl border border-line bg-surface p-6">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-soft text-saffron">
+            <div key={title} className="grid grid-cols-[auto_1fr] items-start gap-x-4 rounded-2xl border border-line bg-surface p-5 sm:block sm:p-6">
+              <span className="row-span-2 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-soft text-saffron sm:row-span-1">
                 <Icon className="h-5 w-5" aria-hidden />
               </span>
-              <h3 className="mt-4 text-lg font-bold text-heading">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-body">{text}</p>
+              <h3 className="text-base font-bold text-heading sm:mt-4 sm:text-lg">{title}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-body sm:mt-2">{text}</p>
             </div>
           ))}
         </div>
@@ -272,11 +272,11 @@ export default function HomePage() {
       </section>
 
       <section id="how-it-works" className="scroll-mt-20 bg-surface">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           <SectionHead eyebrow="How it works" title="Three simple steps" />
           <ol className="mt-10 grid gap-5 md:grid-cols-3">
             {STEPS.map((s) => (
-              <li key={s.n} className="rounded-2xl border border-line bg-bg p-6">
+              <li key={s.n} className="rounded-2xl border border-line bg-bg p-5 sm:p-6">
                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-saffron text-sm font-extrabold text-white">{s.n}</span>
                 <h3 className="mt-4 text-lg font-bold text-heading">{s.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-body">{s.text}</p>
@@ -286,7 +286,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-4 py-16 sm:px-6">
+      <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-4 py-12 sm:px-6 sm:py-16">
         <SectionHead eyebrow="FAQ" title="Questions, answered" />
         <div className="mt-8 space-y-3">
           {FAQS.map((f) => (
@@ -301,9 +301,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="contact" className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-16 sm:px-6">
-        <div className="rounded-3xl bg-gradient-to-br from-[#E4702B] via-[#C65D24] to-[#8E2F12] px-6 py-12 text-center text-white sm:px-12">
-          <h2 className="text-3xl font-extrabold tracking-tight">Be among the first to try VedRit</h2>
+      <section id="contact" className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-12 sm:px-6 sm:pb-16">
+        <div className="rounded-3xl bg-gradient-to-br from-[#E4702B] via-[#C65D24] to-[#8E2F12] px-5 py-10 text-center text-white sm:px-12 sm:py-12">
+          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Be among the first to try VedRit</h2>
           <p className="mx-auto mt-3 max-w-xl text-white/90">
             The app is launching soon. Write to us and we will let you know the moment it is live, or if you have any question.
           </p>
