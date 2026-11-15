@@ -8,10 +8,11 @@ interface Props {
   length?: number;
   autoFocus?: boolean;
   hasError?: boolean;
+  glass?: boolean;
   onComplete?: (value: string) => void;
 }
 
-export const OtpInput = React.forwardRef<TextInput, Props>(({ value, onChange, length = 6, autoFocus, hasError, onComplete }, ref) => {
+export const OtpInput = React.forwardRef<TextInput, Props>(({ value, onChange, length = 6, autoFocus, hasError, glass, onComplete }, ref) => {
   const inner = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
   const setRef = (node: TextInput | null) => {
@@ -35,8 +36,17 @@ export const OtpInput = React.forwardRef<TextInput, Props>(({ value, onChange, l
           const char = value[i] || '';
           const isActive = focused && i === active;
           return (
-            <View key={i} style={[styles.box, char ? styles.boxFilled : null, isActive && styles.boxActive, hasError && styles.boxError]}>
-              <Text style={styles.digit}>{char}</Text>
+            <View
+              key={i}
+              style={[
+                styles.box,
+                glass && styles.boxGlass,
+                char ? (glass ? styles.boxGlassFilled : styles.boxFilled) : null,
+                isActive && (glass ? styles.boxGlassActive : styles.boxActive),
+                hasError && styles.boxError,
+              ]}
+            >
+              <Text style={[styles.digit, glass && styles.digitGlass]}>{char}</Text>
             </View>
           );
         })}
@@ -76,6 +86,10 @@ const styles = StyleSheet.create({
   },
   boxFilled: { borderColor: C.primarySaffron, backgroundColor: C.softSaffronBg },
   boxActive: { borderColor: C.primarySaffron, borderWidth: 2 },
+  boxGlass: { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.45)' },
+  boxGlassFilled: { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.8)' },
+  boxGlassActive: { borderColor: '#FFFFFF', borderWidth: 2 },
+  digitGlass: { color: '#FFFFFF' },
   boxError: { borderColor: '#B91C1C' },
   digit: { fontSize: 24, fontWeight: '800', color: C.heading },
   hidden: { position: 'absolute', width: 1, height: 1, opacity: 0 },

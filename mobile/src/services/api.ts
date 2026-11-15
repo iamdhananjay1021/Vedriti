@@ -3,6 +3,7 @@ import { session } from './session';
 import type {
   ApiProduct,
   ApiPuja,
+  ApiSamuhikPuja,
   AuthResult,
   Booking,
   CalendarDay,
@@ -12,6 +13,7 @@ import type {
   KundliRequest,
   Order,
   PublicSettings,
+  SamuhikEnrollInput,
   ServiceType,
   UserProfile,
 } from '../types/api';
@@ -182,4 +184,19 @@ export const api = {
     request<{ paymentUrl: string }>('POST', '/me/payments/pay-now', { type, reference }),
   paymentStatus: (type: PaymentRefType, reference: string) =>
     request<{ paymentStatus: string; status: string }>('GET', `/me/payments/status/${type}/${reference}`),
+
+  // Feature 1: Nitya Puja & Diya Lighting (Daily Mandir Streak)
+  recordNityaPuja: (deity?: string) =>
+    request<{ message: string; streak: number; totalDiyaLit: number; lastPujaDate: string }>('POST', '/devotee/nitya-puja', { deity }, true),
+
+  // Feature 2: Smart Japa Mala Counter (108 beads)
+  recordJapa: (input: { count: number; malasCompleted?: number; mantraId?: string }) =>
+    request<{ message: string; totalJapaCount: number; totalMalasCompleted: number }>('POST', '/devotee/japa', input, true),
+
+  // Feature 3: Samuhik Mahapujas (₹101 / ₹251 Micro-Dakshina)
+  samuhikPujas: () => request<ApiSamuhikPuja[]>('GET', '/samuhik-pujas', undefined, false),
+  samuhikPuja: (slugOrId: string) => request<ApiSamuhikPuja>('GET', `/samuhik-pujas/${slugOrId}`, undefined, false),
+  enrollSamuhikPuja: (id: string, input: SamuhikEnrollInput) =>
+    request<{ message: string; booking: any }>('POST', `/samuhik-pujas/${id}/enroll`, input, true),
+  mySamuhikBookings: () => request<any[]>('GET', '/devotee/samuhik-bookings', undefined, true),
 };

@@ -9,6 +9,8 @@ import { Button, EmptyState } from '../components/ui';
 import { THEME } from '../constants/theme';
 import { SPACE, TYPE } from '../constants/ui';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
+import { SamuhikSection } from '../components/samuhik/SamuhikSection';
 import type { Puja } from '../data/mockData';
 import { matchesPujaFilter } from '../utils/catalog';
 
@@ -19,6 +21,7 @@ interface PujasScreenProps {
 
 export const PujasScreen: React.FC<PujasScreenProps> = ({ onSelectPuja, onNotificationPress }) => {
   const { pujas, loading, error, refresh } = useAppData();
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All Pujas');
 
@@ -35,6 +38,13 @@ export const PujasScreen: React.FC<PujasScreenProps> = ({ onSelectPuja, onNotifi
 
   const header = (
     <View>
+      <SamuhikSection
+        userProfile={{
+          name: user?.name,
+          phone: user?.phone,
+          gotra: user?.gotra,
+        }}
+      />
       <PujaSearchBar value={query} onChangeText={setQuery} onClear={() => setQuery('')} placeholder="Search pujas or deities" />
       <PujaCategoryChips categories={categories} selectedCategory={category} onSelectCategory={setCategory} />
       <Text style={styles.count}>

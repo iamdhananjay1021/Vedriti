@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
-import { Camera, CalendarCheck, ChevronRight, LogOut, MessageCircle, Pencil, Phone, Plus, ScrollText, ShieldCheck, ShoppingBag, Trash2, UserRound, Video } from 'lucide-react-native';
+import { Award, Camera, CalendarCheck, ChevronRight, Flame, LogOut, MessageCircle, Pencil, Phone, Plus, ScrollText, ShieldCheck, ShoppingBag, Sparkles, Trash2, UserRound, Video } from 'lucide-react-native';
 import { AppBackground } from '../components/common/AppBackground';
 import { AppHeader } from '../components/common/AppHeader';
 import { Avatar } from '../components/common/Avatar';
@@ -418,6 +418,27 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
           </LinearGradient>
         </View>
 
+        {/* Devotee Spiritual Sadhana Record */}
+        <View style={styles.spiritualBanner}>
+          <View style={styles.spiritualCol}>
+            <Flame size={18} color="#EA580C" />
+            <Text style={styles.spiritualNum}>{user?.dailyPujaStreak || 0} दिन</Text>
+            <Text style={styles.spiritualDesc}>नित्य पूजा स्ट्रीक</Text>
+          </View>
+          <View style={styles.spiritualDivider} />
+          <View style={styles.spiritualCol}>
+            <Sparkles size={18} color="#D97706" />
+            <Text style={styles.spiritualNum}>{user?.totalJapaCount || 0}</Text>
+            <Text style={styles.spiritualDesc}>कुल मंत्र जप</Text>
+          </View>
+          <View style={styles.spiritualDivider} />
+          <View style={styles.spiritualCol}>
+            <Award size={18} color="#10B981" />
+            <Text style={styles.spiritualNum}>{user?.totalMalasCompleted || 0}</Text>
+            <Text style={styles.spiritualDesc}>पूर्ण मालाएं</Text>
+          </View>
+        </View>
+
         <View style={styles.stats}>
           {[
             { id: 'bookings' as const, label: 'Bookings', value: bookings?.length ?? 0, icon: CalendarCheck },
@@ -464,6 +485,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
           </View>
 
           <Text style={styles.version}>VedRit v{version}</Text>
+          <Text style={styles.managedBy}>Managed by Urbexon Software Solutions LLP</Text>
         </View>
       </KeyboardAwareScrollView>
     </AppBackground>
@@ -509,6 +531,39 @@ const styles = StyleSheet.create({
   editText: { color: C.primarySaffron, fontWeight: '800', fontSize: 14 },
   photoBtn: { height: 44, paddingHorizontal: 18, borderRadius: RADIUS.pill, borderWidth: 1, borderColor: 'rgba(255,255,255,0.7)', flexDirection: 'row', alignItems: 'center', gap: 7 },
   photoText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
+  spiritualBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: '#FFF8F0',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: '#FED7AA',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginHorizontal: SPACE.lg,
+    marginTop: SPACE.md,
+  },
+  spiritualCol: {
+    alignItems: 'center',
+  },
+  spiritualNum: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#9A3412',
+    marginTop: 2,
+  },
+  spiritualDesc: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#78350F',
+    marginTop: 1,
+  },
+  spiritualDivider: {
+    width: 1,
+    height: 26,
+    backgroundColor: '#FDBA74',
+  },
   stats: { flexDirection: 'row', gap: SPACE.sm, paddingHorizontal: SPACE.lg, marginTop: SPACE.lg },
   stat: { flex: 1, backgroundColor: '#FFF', borderRadius: RADIUS.lg, borderWidth: 1.5, borderColor: C.borderLight, alignItems: 'center', paddingVertical: SPACE.md, gap: 2 },
   statActive: { borderColor: C.primarySaffron, backgroundColor: C.softSaffronBg },
@@ -547,4 +602,5 @@ const styles = StyleSheet.create({
   menuHint: { ...TYPE.caption, marginTop: 1 },
   dangerText: { color: '#B91C1C' },
   version: { ...TYPE.caption, textAlign: 'center', marginTop: SPACE.xl },
+  managedBy: { ...TYPE.caption, textAlign: 'center', marginTop: 4, fontSize: 11, color: C.mutedText },
 });

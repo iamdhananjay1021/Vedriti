@@ -41,6 +41,12 @@ export interface UserProfile {
   pinCode: string;
   profileCompleted: boolean;
   familyMembers: FamilyMember[];
+  dailyPujaStreak?: number;
+  lastPujaDate?: string;
+  totalDiyaLit?: number;
+  totalJapaCount?: number;
+  totalMalasCompleted?: number;
+  favoriteDeity?: string;
   createdAt: string;
 }
 
@@ -285,4 +291,47 @@ export interface HomeContent {
   announcement: string | null;
   panchang: HomePanchang | null;
   sections: { popularPujas: boolean; kits: boolean; kundli: boolean; pandit: boolean; japa: boolean };
+}
+
+export interface ApiSamuhikTier {
+  id: string;
+  name: string;
+  dakshina: number;
+  maxFamilyMembers: number;
+  prasadIncluded: boolean;
+  description?: string;
+}
+
+export interface ApiSamuhikPuja {
+  id: string;
+  _id?: string;
+  slug: string;
+  title: string;
+  subtitle?: string;
+  deity: string;
+  templeVenue: string;
+  eventDate: string;
+  muhuratTime: string;
+  imageUrl?: string;
+  description?: string;
+  benefits?: string[];
+  vidhiInclusions?: string[];
+  tiers: ApiSamuhikTier[];
+  maxDevotees: number;
+  enrolledCount: number;
+  status: 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  sankalpVideoUrl?: string;
+  sankalpPhotos?: string[];
+  isFeatured: boolean;
+}
+
+export interface SamuhikEnrollInput {
+  devoteeName: string;
+  phone: string;
+  gotra: string;
+  rashi?: string;
+  familyMembers?: { name: string; relation: string }[];
+  sankalpWish?: string;
+  tierId: string;
+  paymentMethod: 'ONLINE' | 'PAY_LATER';
 }

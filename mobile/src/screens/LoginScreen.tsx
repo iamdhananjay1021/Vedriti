@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Linking, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Eye, EyeOff, MailCheck, ShieldCheck } from 'lucide-react-native';
+import * as SecureStore from 'expo-secure-store';
+import { ArrowLeft, Check, Eye, EyeOff, Lock, Mail, Smartphone } from 'lucide-react-native';
+import { BrandLogo } from '../components/common/BrandLogo';
 import { KeyboardAwareScrollView } from '../components/ui/KeyboardAwareScrollView';
 import { OtpInput } from '../components/ui/OtpInput';
-import { THEME } from '../constants/theme';
-import { BrandMark } from '../components/common/BrandLogo';
-import { Button, Field } from '../components/ui';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isValidEmail, isValidPhone, localPhone } from '../utils/format';
@@ -15,10 +15,12 @@ import { WEBSITE_URL } from '../config/api';
 
 type Mode = 'otp' | 'password' | 'signup' | 'forgot';
 
+const REMEMBER_KEY = 'vedrit.login.remember';
+
 const HEADINGS: Record<Mode, { title: string; sub: string }> = {
-  otp: { title: 'Welcome to VedRit', sub: 'Enter your email and mobile number. We will email you a 6-digit code.' },
-  password: { title: 'Welcome back', sub: 'Login with your email and password.' },
-  signup: { title: 'Create your account', sub: 'Tell us a little about you to get started.' },
+  otp: { title: 'Login', sub: 'Welcome back, enter your email and mobile number. We will email you a 6-digit code.' },
+  password: { title: 'Login', sub: 'Welcome back, login to your account with your password.' },
+  signup: { title: 'Sign up', sub: 'Create your VedRit account with your email and mobile number.' },
   forgot: { title: 'Reset password', sub: 'Enter your email and we will send you a code.' },
 };
 
@@ -31,6 +33,28 @@ const maskEmail = (email: string) => {
   return `${visible}${'•'.repeat(Math.max(2, user.length - visible.length))}@${domain}`;
 };
 
+interface GlassFieldProps extends TextInputProps {
+  icon: React.ReactNode;
+  prefix?: string;
+  onIconPress?: () => void;
+  iconLabel?: string;
+}
+
+const GlassField = React.forwardRef<TextInput, GlassFieldProps>(({ icon, prefix, onIconPress, iconLabel, style, ...input }, ref) => (
+  <View style={styles.field}>
+    {prefix ? <Text style={styles.prefix}>{prefix}</Text> : null}
+    <TextInput ref={ref} placeholderTextColor="rgba(255,255,255,0.65)" selectionColor="#FFFFFF" style={[styles.input, style]} {...input} />
+    {onIconPress ? (
+      <TouchableOpacity onPress={onIconPress} accessibilityLabel={iconLabel} hitSlop={10}>
+        {icon}
+      </TouchableOpacity>
+    ) : (
+      icon
+    )}
+  </View>
+));
+GlassField.displayName = 'GlassField';
+
 export const LoginScreen: React.FC = () => {
   const { completeLogin } = useAuth();
   const [mode, setMode] = useState<Mode>('otp');
@@ -40,9 +64,9 @@ export const LoginScreen: React.FC = () => {
   const [devOtp, setDevOtp] = useState<string | undefined>();
   const codeRef = useRef<TextInput>(null);
 
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [remember, setRemember] = useState(true);
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -50,7 +74,17 @@ export const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const needsPhone = mode === 'otp' || mode === 'signup';
-  const tab: 'login' | 'signup' = mode === 'signup' ? 'signup' : 'login';
+
+  useEffect(() => {
+    SecureStore.getItemAsync(REMEMBER_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        const saved = JSON.parse(raw) as { email?: string; phone?: string };
+        if (saved.email) setEmail(saved.email);
+        if (saved.phone) setPhone(saved.phone);
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -85,11 +119,21 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
+  const finishLogin = async (task: () => Promise<Awaited<ReturnType<typeof api.loginEmail>>>) => {
+    const result = await task();
+    try {
+      if (remember) await SecureStore.setItemAsync(REMEMBER_KEY, JSON.stringify({ email: email.trim(), phone: localPhone(phone) }));
+      else await SecureStore.deleteItemAsync(REMEMBER_KEY);
+    } catch {
+      /* ignore */
+    }
+    await completeLogin(result);
+  };
+
   const focusCode = () => setTimeout(() => codeRef.current?.focus(), 350);
 
   const sendCode = () => {
     const cleanEmail = email.trim();
-    if (mode === 'signup' && name.trim().length < 2) return setError('Please enter your name');
     if (!isValidEmail(cleanEmail)) return setError('Please enter a valid email address');
     if (needsPhone && !isValidPhone(localPhone(phone))) return setError('Please enter a valid 10-digit mobile number');
     run(async () => {
@@ -126,84 +170,74 @@ export const LoginScreen: React.FC = () => {
 
     if (mode === 'password') {
       if (!password) return setError('Please enter your password');
-      return run(async () => {
-        await completeLogin(await api.loginEmail(cleanEmail, password));
-      });
+      return run(() => finishLogin(() => api.loginEmail(cleanEmail, password)));
     }
 
     if (!/^\d{6}$/.test(otpCode)) return setError('Please enter the 6-digit code sent to your email');
 
-    if (mode === 'otp') {
-      return run(async () => {
-        await completeLogin(await api.verifyEmailOtp(cleanEmail, localPhone(phone), otpCode));
-      });
-    }
+    if (mode === 'otp') return run(() => finishLogin(() => api.verifyEmailOtp(cleanEmail, localPhone(phone), otpCode)));
 
     const problem = newPasswordProblem();
     if (problem) return setError(problem);
 
-    if (mode === 'signup') {
-      return run(async () => {
-        await completeLogin(await api.signupEmail(cleanEmail, localPhone(phone), password, otpCode, name.trim()));
-      });
-    }
+    if (mode === 'signup') return run(() => finishLogin(() => api.signupEmail(cleanEmail, localPhone(phone), password, otpCode)));
 
-    return run(async () => {
-      await completeLogin(await api.resetPassword(cleanEmail, otpCode, password));
-    });
+    return run(() => finishLogin(() => api.resetPassword(cleanEmail, otpCode, password)));
   };
 
-  const passwordFields = (label: string, withConfirm: boolean) => (
-    <>
-      <View>
-        <Field
-          label={label}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          autoCapitalize="none"
-          autoComplete={withConfirm ? 'new-password' : 'password'}
-          placeholder={withConfirm ? 'At least 8 characters' : 'Your password'}
-        />
-        <TouchableOpacity style={styles.eye} onPress={() => setShowPassword((s) => !s)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
-          {showPassword ? <EyeOff size={18} color={THEME.colors.mutedText} /> : <Eye size={18} color={THEME.colors.mutedText} />}
-        </TouchableOpacity>
-      </View>
-      {withConfirm ? (
-        <Field label="Confirm password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showPassword} autoCapitalize="none" placeholder="Re-enter password" />
-      ) : null}
-    </>
+  const eyeIcon = showPassword ? <EyeOff size={20} color="rgba(255,255,255,0.85)" /> : <Eye size={20} color="rgba(255,255,255,0.85)" />;
+
+  const passwordField = (placeholder: string, value: string, onChange: (v: string) => void, autoComplete: 'password' | 'new-password') => (
+    <GlassField
+      icon={eyeIcon}
+      onIconPress={() => setShowPassword((s) => !s)}
+      iconLabel={showPassword ? 'Hide password' : 'Show password'}
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      secureTextEntry={!showPassword}
+      autoCapitalize="none"
+      autoComplete={autoComplete}
+    />
+  );
+
+  const primaryButton = (title: string, onPress: () => void) => (
+    <TouchableOpacity onPress={onPress} disabled={loading} activeOpacity={0.85} accessibilityRole="button" accessibilityState={{ busy: loading, disabled: loading }}>
+      <LinearGradient colors={['#F59A45', '#E4702B', '#C65D24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.button, loading && styles.buttonBusy]}>
+        {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>{title}</Text>}
+      </LinearGradient>
+    </TouchableOpacity>
   );
 
   const renderVerify = () => (
     <View>
       <TouchableOpacity style={styles.back} onPress={resetState} accessibilityRole="button">
-        <ArrowLeft size={16} color={THEME.colors.primarySaffron} />
-        <Text style={styles.link}>Change email</Text>
+        <ArrowLeft size={16} color="#FFFFFF" />
+        <Text style={styles.backText}>Change email</Text>
       </TouchableOpacity>
-      <View style={styles.verifyIcon}>
-        <MailCheck size={26} color={THEME.colors.primarySaffron} />
-      </View>
       <Text style={styles.title}>Check your email</Text>
       <Text style={styles.sub}>
         We sent a 6-digit code to <Text style={styles.bold}>{maskEmail(email)}</Text>. It may take a minute, check spam too.
       </Text>
 
-      <View style={styles.otpWrap}>
-        <OtpInput ref={codeRef} value={code} onChange={setCode} hasError={Boolean(error)} onComplete={mode === 'otp' ? (c) => submit(c) : undefined} />
-      </View>
+      <OtpInput ref={codeRef} glass value={code} onChange={setCode} hasError={Boolean(error)} onComplete={mode === 'otp' ? (c) => submit(c) : undefined} />
       {devOtp ? <Text style={styles.devHint}>Test code: {devOtp}</Text> : null}
 
-      {mode === 'signup' || mode === 'forgot' ? <View style={styles.gap}>{passwordFields(mode === 'forgot' ? 'New password' : 'Create password', true)}</View> : null}
+      {mode === 'signup' || mode === 'forgot' ? (
+        <View style={styles.fields}>
+          {passwordField(mode === 'forgot' ? 'New password' : 'Create password', password, setPassword, 'new-password')}
+          {passwordField('Confirm password', confirm, setConfirm, 'new-password')}
+        </View>
+      ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Button title={mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Reset & login' : 'Verify & continue'} onPress={() => submit()} loading={loading} />
+      <View style={styles.actions}>{primaryButton(mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Reset & login' : 'Verify & continue', () => submit())}</View>
 
       <View style={styles.resend}>
         <Text style={styles.muted}>Didn't get it? </Text>
         <TouchableOpacity onPress={resend} disabled={resendIn > 0 || loading}>
-          <Text style={[styles.link, resendIn > 0 && styles.linkDisabled]}>{resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}</Text>
+          <Text style={[styles.boldLink, resendIn > 0 && styles.linkDisabled]}>{resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -211,141 +245,142 @@ export const LoginScreen: React.FC = () => {
 
   const renderForm = () => (
     <View>
-      {mode !== 'forgot' ? (
-        <View style={styles.tabs}>
-          {(['login', 'signup'] as const).map((t) => {
-            const active = tab === t;
-            return (
-              <TouchableOpacity
-                key={t}
-                style={[styles.tab, active && styles.tabActive]}
-                onPress={() => switchMode(t === 'login' ? 'otp' : 'signup')}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-              >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>{t === 'login' ? 'Login' : 'Sign up'}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ) : (
+      {mode === 'forgot' ? (
         <TouchableOpacity style={styles.back} onPress={() => switchMode('password')} accessibilityRole="button">
-          <ArrowLeft size={16} color={THEME.colors.primarySaffron} />
-          <Text style={styles.link}>Back to login</Text>
+          <ArrowLeft size={16} color="#FFFFFF" />
+          <Text style={styles.backText}>Back to login</Text>
         </TouchableOpacity>
-      )}
+      ) : null}
 
       <Text style={styles.title}>{HEADINGS[mode].title}</Text>
       <Text style={styles.sub}>{HEADINGS[mode].sub}</Text>
 
-      {mode === 'signup' ? <Field label="Full name" value={name} onChangeText={setName} placeholder="Your name" autoComplete="name" /> : null}
-      <Field
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoComplete="email"
-        placeholder="you@example.com"
-      />
-      {needsPhone ? (
-        <Field
-          label="Mobile number"
-          prefix="+91"
-          value={phone}
-          onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          maxLength={10}
-          placeholder="10-digit mobile number"
+      <View style={styles.fields}>
+        <GlassField
+          icon={<Mail size={20} color="rgba(255,255,255,0.85)" />}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
         />
-      ) : null}
-      {mode === 'password' ? passwordFields('Password', false) : null}
+        {needsPhone ? (
+          <GlassField
+            icon={<Smartphone size={20} color="rgba(255,255,255,0.85)" />}
+            prefix="+91"
+            value={phone}
+            onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
+            placeholder="Mobile number"
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            maxLength={10}
+          />
+        ) : null}
+        {mode === 'password' ? passwordField('Password', password, setPassword, 'password') : null}
+      </View>
+
+      <View style={styles.rowBetween}>
+        <TouchableOpacity style={styles.remember} onPress={() => setRemember((r) => !r)} accessibilityRole="checkbox" accessibilityState={{ checked: remember }}>
+          <View style={[styles.checkbox, remember && styles.checkboxOn]}>{remember ? <Check size={13} color="#FFFFFF" strokeWidth={3.5} /> : null}</View>
+          <Text style={styles.rememberText}>Remember me</Text>
+        </TouchableOpacity>
+        {mode === 'password' ? (
+          <TouchableOpacity onPress={() => switchMode('forgot')}>
+            <Text style={styles.linkText}>Forgot password?</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {mode === 'password' ? <Button title="Login" onPress={() => submit()} loading={loading} /> : <Button title="Send code" onPress={sendCode} loading={loading} />}
+      <View style={styles.actions}>{mode === 'password' ? primaryButton('Login', () => submit()) : primaryButton('Send code', sendCode)}</View>
 
-      <View style={styles.links}>
-        {mode === 'otp' ? (
-          <TouchableOpacity onPress={() => switchMode('password')}>
-            <Text style={styles.link}>Login with password instead</Text>
-          </TouchableOpacity>
-        ) : null}
-        {mode === 'password' ? (
-          <>
-            <TouchableOpacity onPress={() => switchMode('otp')}>
-              <Text style={styles.link}>Login with email code instead</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => switchMode('forgot')}>
-              <Text style={styles.linkMuted}>Forgot password?</Text>
-            </TouchableOpacity>
-          </>
-        ) : null}
+      {mode === 'otp' || mode === 'password' ? (
+        <TouchableOpacity style={styles.switchRow} onPress={() => switchMode(mode === 'otp' ? 'password' : 'otp')}>
+          <Lock size={14} color="rgba(255,255,255,0.85)" />
+          <Text style={styles.linkText}>{mode === 'otp' ? 'Login with password' : 'Login with email code'}</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      <View style={styles.resend}>
+        <Text style={styles.muted}>{mode === 'signup' ? 'Already have an account? ' : "Don't have an account? "}</Text>
+        <TouchableOpacity onPress={() => switchMode(mode === 'signup' ? 'otp' : 'signup')}>
+          <Text style={styles.boldLink}>{mode === 'signup' ? 'Login' : 'Signup'}</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
-    <LinearGradient colors={['#FFF3E0', '#FAF6EE', '#FAF6EE']} style={styles.flex}>
+    <ImageBackground source={require('../../assets/images/login-bg.jpg')} style={styles.flex} resizeMode="cover">
+      <StatusBar style="light" />
       <SafeAreaView style={styles.flex}>
+        <View style={styles.header}>
+          <BrandLogo size={34} light />
+        </View>
         <KeyboardAwareScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.hero}>
-            <BrandMark size={72} />
-            <Text style={styles.brand}>
-              Ved<Text style={styles.brandAccent}>Rit</Text>
-            </Text>
-            <Text style={styles.tagline}>Puja, appointments & kundli with Pandit Ji</Text>
-          </View>
-
           <View style={styles.card}>{codeSent && mode !== 'password' ? renderVerify() : renderForm()}</View>
 
-          <View style={styles.secure}>
-            <ShieldCheck size={14} color={THEME.colors.mutedText} />
-            <Text style={styles.legal}>
-              Secure login. By continuing you agree to our{' '}
-              <Text style={styles.linkInline} onPress={() => Linking.openURL(`${WEBSITE_URL}/privacy-policy`)}>
-                Privacy Policy
-              </Text>
+          <Text style={styles.legal}>
+            By continuing you agree to our{' '}
+            <Text style={styles.boldLink} onPress={() => Linking.openURL(`${WEBSITE_URL}/privacy-policy`)}>
+              Privacy Policy
             </Text>
-          </View>
+          </Text>
         </KeyboardAwareScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </ImageBackground>
   );
 };
 
-const C = THEME.colors;
+const WHITE = '#FFFFFF';
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 28, paddingBottom: 24, justifyContent: 'center' },
-  hero: { alignItems: 'center', marginBottom: 22 },
-  brand: { fontSize: 30, fontWeight: '800', color: C.heading, marginTop: 10, letterSpacing: -0.4 },
-  brandAccent: { color: C.primarySaffron },
-  tagline: { fontSize: 13.5, color: C.bodyText, marginTop: 4, textAlign: 'center' },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: C.borderLight },
-  tabs: { flexDirection: 'row', backgroundColor: C.softSaffronBg, borderRadius: 999, padding: 4, marginBottom: 20 },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 999 },
-  tabActive: { backgroundColor: C.primarySaffron },
-  tabText: { fontSize: 14, fontWeight: '700', color: C.bodyText },
-  tabTextActive: { color: '#FFFFFF' },
-  title: { fontSize: 22, fontWeight: '800', color: C.heading, letterSpacing: -0.3 },
-  sub: { fontSize: 13.5, lineHeight: 19, color: C.bodyText, marginTop: 4, marginBottom: 18 },
-  bold: { fontWeight: '800', color: C.heading },
+  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingVertical: 20, justifyContent: 'center' },
+  header: { alignItems: 'center', paddingTop: 14 },
+  card: {
+    borderRadius: 28,
+    padding: 22,
+    backgroundColor: 'rgba(34,10,26,0.34)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.45)',
+  },
+  title: { fontSize: 32, fontWeight: '800', color: WHITE, letterSpacing: -0.4 },
+  sub: { fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.92)', marginTop: 6, marginBottom: 22 },
+  bold: { fontWeight: '800', color: WHITE },
+  fields: { gap: 14 },
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 54,
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  prefix: { color: WHITE, fontSize: 15, fontWeight: '700' },
+  input: { flex: 1, color: WHITE, fontSize: 15.5, paddingVertical: 0, height: '100%' },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
+  remember: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center' },
+  checkboxOn: { backgroundColor: '#E4702B', borderColor: '#E4702B' },
+  rememberText: { color: WHITE, fontSize: 14 },
+  actions: { marginTop: 20 },
+  button: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  buttonBusy: { opacity: 0.8 },
+  buttonText: { color: WHITE, fontSize: 18, fontWeight: '800' },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 16 },
+  linkText: { color: 'rgba(255,255,255,0.92)', fontSize: 14, fontWeight: '600' },
+  boldLink: { color: WHITE, fontSize: 14.5, fontWeight: '800' },
+  linkDisabled: { color: 'rgba(255,255,255,0.55)' },
+  resend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  muted: { color: 'rgba(255,255,255,0.9)', fontSize: 14.5 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 16 },
-  verifyIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.softSaffronBg, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  otpWrap: { marginBottom: 6 },
-  gap: { marginTop: 14 },
-  devHint: { fontSize: 12, color: C.bilvaGreen, marginTop: 8, marginBottom: 4 },
-  error: { color: '#B91C1C', fontSize: 13, marginBottom: 10, marginTop: 6 },
-  resend: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16 },
-  muted: { fontSize: 13.5, color: C.mutedText },
-  links: { alignItems: 'center', gap: 12, marginTop: 16 },
-  link: { color: C.primarySaffron, fontWeight: '700', fontSize: 14 },
-  linkMuted: { color: C.mutedText, fontWeight: '600', fontSize: 13.5 },
-  linkInline: { color: C.primarySaffron, fontWeight: '700' },
-  linkDisabled: { color: C.mutedText },
-  eye: { position: 'absolute', right: 14, top: 38 },
-  secure: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 18, paddingHorizontal: 12 },
-  legal: { flexShrink: 1, textAlign: 'center', fontSize: 12, color: C.mutedText },
+  backText: { color: WHITE, fontSize: 14, fontWeight: '700' },
+  devHint: { fontSize: 12.5, color: '#B6F2C2', marginTop: 10 },
+  error: { color: '#FFD0C9', fontSize: 13.5, marginTop: 14, fontWeight: '600' },
+  legal: { textAlign: 'center', fontSize: 12.5, color: 'rgba(255,255,255,0.85)', marginTop: 18, paddingHorizontal: 12 },
 });

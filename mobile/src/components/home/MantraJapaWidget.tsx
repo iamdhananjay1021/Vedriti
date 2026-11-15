@@ -6,11 +6,15 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
-import { RotateCcw, Play, Pause, Flame, Sparkles } from 'lucide-react-native';
+import { RotateCcw, Play, Pause, Flame, Sparkles, ChevronRight } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { VEDIC_STOTRAMS, VedicStotram } from '../../data/mockData';
 
-export const MantraJapaWidget: React.FC = () => {
+interface Props {
+  onOpenFullMala?: () => void;
+}
+
+export const MantraJapaWidget: React.FC<Props> = ({ onOpenFullMala }) => {
   const [selectedStotram, setSelectedStotram] = useState<VedicStotram>(VEDIC_STOTRAMS[0]);
   const [chantCount, setChantCount] = useState(27);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -161,6 +165,20 @@ export const MantraJapaWidget: React.FC = () => {
             </View>
           </View>
         </View>
+
+        {onOpenFullMala ? (
+          <TouchableOpacity
+            onPress={onOpenFullMala}
+            style={styles.fullMalaCta}
+            activeOpacity={0.85}
+          >
+            <Sparkles size={13} color="#C65D24" />
+            <Text style={styles.fullMalaCtaText}>
+              डिजिटल रुद्राक्ष माला 108 मनके पूर्ण साधना खोलें
+            </Text>
+            <ChevronRight size={14} color="#C65D24" />
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );
@@ -177,6 +195,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EFE7DD',
     padding: 16,
+  },
+  fullMalaCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FDF2E9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F5DDC7',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginTop: 14,
+  },
+  fullMalaCtaText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#C65D24',
   },
   topRow: {
     flexDirection: 'row',
