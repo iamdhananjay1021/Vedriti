@@ -6,12 +6,13 @@ import { Admin } from '../models/Admin.js';
 const run = async () => {
   const email = String(process.argv[2] || process.env.NEW_ADMIN_EMAIL || '').trim().toLowerCase();
   const password = String(process.argv[3] || process.env.NEW_ADMIN_PASSWORD || '');
-  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Usage: npm run admin:create -- <email> <password>');
+  const role = process.argv[4] === 'super' || process.env.NEW_ADMIN_ROLE === 'super_admin' ? 'super_admin' : 'admin';
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Usage: npm run admin:create -- <email> <password> [super]');
   if (password.length < 8) throw new Error('Password must be at least 8 characters');
   await connectDatabase();
   const hash = await bcrypt.hash(password, 10);
-  const admin = await Admin.findOneAndUpdate({ email }, { email, password: hash, isActive: true }, { upsert: true, new: true, setDefaultsOnInsert: true });
-  console.log(`[Admin] ready: ${admin.email}`);
+  const admin = await Admin.findOneAndUpdate({ email }, { email, password: hash, role, isActive: true }, { upsert: true, new: true, setDefaultsOnInsert: true });
+  console.log(`[Admin] ready: ${admin.email} (${admin.role})`);
   await mongoose.disconnect();
 };
 

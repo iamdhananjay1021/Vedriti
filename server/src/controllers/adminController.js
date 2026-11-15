@@ -61,7 +61,7 @@ export const adminLogin = asyncHandler(async (req, res) => {
     ok = Boolean(config.adminEmail && config.adminPassword) && safeEqual(email, config.adminEmail) && safeEqual(req.body.password, config.adminPassword);
   }
   if (!ok) throw new AppError('Invalid admin email or password', 401);
-  res.json({ success: true, data: { token: signAdminToken(email), email } });
+  res.json({ success: true, data: { token: signAdminToken(email), email, role: admin ? admin.role : 'admin' } });
 });
 
 export const adminMe = asyncHandler(async (req, res) => {

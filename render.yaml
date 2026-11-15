@@ -34,12 +34,6 @@ services:
         value: fast2sms
       - key: FAST2SMS_API_KEY
         sync: false
-      - key: STATIC_OTP
-        sync: false
-      - key: REVIEWER_PHONES
-        sync: false
-      - key: REVIEWER_EMAILS
-        sync: false
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET

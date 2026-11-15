@@ -42,7 +42,7 @@ const run = async () => {
   const phone = `9${String(Date.now()).slice(-9)}`;
   const otpReq = await call('POST', '/auth/request-otp', { body: { phone } });
   check('request otp', otpReq.status === 200, otpReq.json);
-  const code = otpReq.json.data?.devOtp || process.env.STATIC_OTP;
+  const code = otpReq.json.data?.devOtp;
 
   const badOtp = await call('POST', '/auth/verify-otp', { body: { phone, otp: '000000' === code ? '111111' : '000000' } });
   check('wrong otp rejected', badOtp.status === 400, badOtp.json);

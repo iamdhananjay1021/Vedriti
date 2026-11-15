@@ -51,9 +51,6 @@ export const config = {
   fast2smsApiKey: read('FAST2SMS_API_KEY'),
   resendApiKey: read('RESEND_API_KEY'),
   emailFrom: read('EMAIL_FROM') || 'VedRit <no-reply@vedrit.in>',
-  staticOtp: /^\d{4,6}$/.test(read('STATIC_OTP')) ? read('STATIC_OTP') : '',
-  reviewerPhones: [...new Set([...parseList(read('REVIEWER_PHONES')).map(localPhone), devUserPhone])].filter((p) => p.length === 10),
-  reviewerEmails: [...new Set([...parseList(read('REVIEWER_EMAILS')).map((e) => e.toLowerCase()), devUserEmail])],
   devUser: {
     name: read('DEV_USER_NAME') || 'VedRit Developer',
     phone: devUserPhone,

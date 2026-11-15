@@ -14,11 +14,6 @@ const run = async () => {
   console.log(`  email:    ${user.email}`);
   console.log(`  password: ${passwordSet ? '(DEV_USER_PASSWORD from .env)' : config.devUser.password}`);
   console.log(`  phone:    ${user.phone}`);
-  console.log(
-    config.staticOtp
-      ? `  phone/email OTP: ${config.staticOtp} (STATIC_OTP)`
-      : '  phone/email OTP: set STATIC_OTP to use a fixed code; in development the code is printed in the server log'
-  );
   await mongoose.disconnect();
 };
 

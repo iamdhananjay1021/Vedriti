@@ -45,16 +45,6 @@ const authResult = async (user, isNewUser) => {
 
 const channelReady = (channel) => (channel === 'sms' ? isSmsEnabled() : isResendConfigured());
 
-const isReviewer = (channel, target) =>
-  channel === 'sms' ? config.reviewerPhones.includes(target.slice(-10)) : config.reviewerEmails.includes(target);
-
-const pickCode = (channel, target) => {
-  if (config.staticOtp && isReviewer(channel, target)) return { code: config.staticOtp, send: false };
-  if (channelReady(channel)) return { code: randomCode(), send: true };
-  if (channel === 'sms' && config.staticOtp) return { code: config.staticOtp, send: false };
-  return { code: randomCode(), send: true };
-};
-
 const otpKey = (channel, target, purpose) => `${purpose}:${channel}:${target}`;
 
 const issueOtp = async ({ channel, target, purpose }) => {
@@ -67,7 +57,8 @@ const issueOtp = async ({ channel, target, purpose }) => {
     }
   }
 
-  const { code, send } = pickCode(channel, target);
+  const code = randomCode();
+  const send = true;
   if (send) {
     if (channel === 'sms') await sendOtpSms(target, code);
     else await sendOtpEmail(target, code, purpose);

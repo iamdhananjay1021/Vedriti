@@ -22,11 +22,11 @@ Google reviewers log in and use the app, so the API must be live.
    - `MONGODB_URI`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PUBLIC_API_URL=https://api.vedrit.in`
    - Email OTP: `RESEND_API_KEY` + `EMAIL_FROM` (verify vedrit.in in the Resend dashboard first).
    - Mobile OTP: `SMS_PROVIDER=fast2sms` + `FAST2SMS_API_KEY`.
-   - Reviewer/developer: `STATIC_OTP` (e.g. 123456) with `REVIEWER_PHONES` / `REVIEWER_EMAILS` always log in with that code. Set `DEV_USER_PASSWORD`.
+   - Reviewer/developer: set `DEV_USER_PASSWORD`; the reviewer logs in with email + password (`dev@vedrit.in`). OTPs are always random, stored hashed in MongoDB and delivered by SMS/email.
    - Razorpay: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (test keys are fine for closed testing).
      Webhook: `https://api.vedrit.in/api/v1/payments/webhook`, event `payment_link.paid`, secret → `RAZORPAY_WEBHOOK_SECRET`.
    - Point DNS `api.vedrit.in` → server with HTTPS. Check `https://api.vedrit.in/api/v1/health`.
-3. **Seed pujas, kits and developer user once:** `cd server && npm run setup` (with production `MONGODB_URI`). Developer login: `dev@vedrit.in` + `DEV_USER_PASSWORD`, or phone `9999999999` + `STATIC_OTP`. Edit them later from the admin panel.
+3. **Seed pujas, kits and developer user once:** `cd server && npm run setup` (with production `MONGODB_URI`). Developer login: `dev@vedrit.in` + `DEV_USER_PASSWORD`. Edit them later from the admin panel.
 4. **Website + admin** — deploy `admin/` on Vercel with `NEXT_PUBLIC_API_URL=https://api.vedrit.in/api/v1`, attach `vedrit.in`.
 5. **Admin panel → Home Screen:** add banners (with photo upload), announcement, today's panchang and section toggles. Product and puja photos are uploaded from **Pujas & Products**. Images are stored in MongoDB and served from `/api/v1/media/<id>`, so no extra storage service is needed.
 6. **Admin panel → Settings:** set Pandit Ji's name, phone, WhatsApp, working hours, fees. Without this the app shows "Pandit Ji" and no call number.
@@ -52,7 +52,7 @@ eas build -p android --profile production
 1. **Create app** → name `VedRit`, default language English (India) or Hindi, App, Free.
 2. **Set up your app:**
    - **Privacy policy:** `https://vedrit.in/privacy-policy`
-   - **App access:** "All or some functionality is restricted" → Mobile `9999999999` (your `REVIEWER_PHONES`) and OTP = your `STATIC_OTP`.
+   - **App access:** "All or some functionality is restricted" → Email `dev@vedrit.in` and your `DEV_USER_PASSWORD` (Login → Password).
    - **Ads:** No. **News:** No. **Government:** No. **Health:** No. **Financial features:** None.
    - **Content rating:** category Lifestyle / Reference; answer No to violence, gambling etc.
    - **Target audience:** 18+.
@@ -93,6 +93,6 @@ First AAB must be uploaded manually. Then: Play Console → API access → servi
 
 ## 5. Before public (production) launch
 
-- Real SMS OTP (`SMS_PROVIDER=fast2sms`) and remove the open `STATIC_OTP` (keep only for `REVIEWER_PHONES`).
+- Real SMS OTP (`SMS_PROVIDER=fast2sms`) and email OTP (Resend).
 - Razorpay live keys + webhook.
 - Strong `ADMIN_PASSWORD`, unique `JWT_SECRET`.
