@@ -65,8 +65,6 @@ export const LoginScreen: React.FC = () => {
   const scale = Math.max(width / BG_W, height / BG_H);
   const centerY = (height - BG_H * scale) / 2 + MANDALA_CY * scale;
   const typing = inset > 0;
-  const tallVerify = codeSent && (mode === 'signup' || mode === 'forgot');
-  const compact = typing || tallVerify;
   const [mode, setMode] = useState<Mode>('otp');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -84,6 +82,8 @@ export const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const needsPhone = mode === 'otp' || mode === 'signup';
+  const tallVerify = codeSent && (mode === 'signup' || mode === 'forgot');
+  const compact = typing || tallVerify;
 
   useEffect(() => {
     SecureStore.getItemAsync(REMEMBER_KEY)
