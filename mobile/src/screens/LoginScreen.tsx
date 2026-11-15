@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ImageBackground, Linking, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Linking, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import { ArrowLeft, Check, Eye, EyeOff, Lock, Mail, Smartphone } from 'lucide-react-native';
 import { BrandLogo } from '../components/common/BrandLogo';
-import { KeyboardAwareScrollView } from '../components/ui/KeyboardAwareScrollView';
+import { useKeyboardInset } from '../hooks/useKeyboardInset';
 import { OtpInput } from '../components/ui/OtpInput';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +16,9 @@ import { WEBSITE_URL } from '../config/api';
 type Mode = 'otp' | 'password' | 'signup' | 'forgot';
 
 const REMEMBER_KEY = 'vedrit.login.remember';
+const BG_W = 1080;
+const BG_H = 2400;
+const MANDALA_CY = 420;
 
 const HEADINGS: Record<Mode, { title: string; sub: string }> = {
   otp: { title: 'Login', sub: 'Welcome back, enter your email and mobile number. We will email you a 6-digit code.' },
@@ -57,6 +60,13 @@ GlassField.displayName = 'GlassField';
 
 export const LoginScreen: React.FC = () => {
   const { completeLogin } = useAuth();
+  const { width, height } = useWindowDimensions();
+  const { inset } = useKeyboardInset();
+  const scale = Math.max(width / BG_W, height / BG_H);
+  const centerY = (height - BG_H * scale) / 2 + MANDALA_CY * scale;
+  const typing = inset > 0;
+  const tallVerify = codeSent && (mode === 'signup' || mode === 'forgot');
+  const compact = typing || tallVerify;
   const [mode, setMode] = useState<Mode>('otp');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -316,19 +326,22 @@ export const LoginScreen: React.FC = () => {
     <ImageBackground source={require('../../assets/images/login-bg.jpg')} style={styles.flex} resizeMode="cover">
       <StatusBar style="light" />
       <SafeAreaView style={styles.flex}>
-        <View style={styles.header}>
-          <BrandLogo size={34} light />
-        </View>
-        <KeyboardAwareScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {!compact ? (
+          <View pointerEvents="none" style={[styles.header, { top: centerY - 24 }]}>
+            <BrandLogo size={44} light />
+          </View>
+        ) : null}
+        <View style={[styles.body, { paddingTop: compact ? 8 : centerY + 56 * scale + 24, paddingBottom: typing ? inset + 8 : compact ? 16 : 64 }]}>
           <View style={styles.card}>{codeSent && mode !== 'password' ? renderVerify() : renderForm()}</View>
-
+        </View>
+        {!compact ? (
           <Text style={styles.legal}>
             By continuing you agree to our{' '}
             <Text style={styles.boldLink} onPress={() => Linking.openURL(`${WEBSITE_URL}/privacy-policy`)}>
               Privacy Policy
             </Text>
           </Text>
-        </KeyboardAwareScrollView>
+        ) : null}
       </SafeAreaView>
     </ImageBackground>
   );
@@ -337,8 +350,8 @@ export const LoginScreen: React.FC = () => {
 const WHITE = '#FFFFFF';
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingVertical: 20, justifyContent: 'center' },
-  header: { alignItems: 'center', paddingTop: 14 },
+  body: { flex: 1, paddingHorizontal: 20, justifyContent: 'center' },
+  header: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   card: {
     borderRadius: 28,
     padding: 22,
@@ -382,5 +395,5 @@ const styles = StyleSheet.create({
   backText: { color: WHITE, fontSize: 14, fontWeight: '700' },
   devHint: { fontSize: 12.5, color: '#B6F2C2', marginTop: 10 },
   error: { color: '#FFD0C9', fontSize: 13.5, marginTop: 14, fontWeight: '600' },
-  legal: { textAlign: 'center', fontSize: 12.5, color: 'rgba(255,255,255,0.85)', marginTop: 18, paddingHorizontal: 12 },
+  legal: { position: 'absolute', left: 0, right: 0, bottom: 18, textAlign: 'center', fontSize: 12.5, color: 'rgba(255,255,255,0.85)', paddingHorizontal: 20 },
 });
