@@ -346,3 +346,19 @@ export interface InboxNotification {
   read: boolean;
   createdAt: string;
 }
+
+export interface LoginRequestResult {
+  channel: 'email' | 'sms';
+  target?: string;
+  isNewUser: boolean;
+  needsDetails: 'email' | 'phone' | null;
+  resendInSeconds?: number;
+  expiresInMinutes?: number;
+  devOtp?: string;
+}
+
+export interface LoginOptions {
+  email: boolean;
+  sms: boolean;
+  password: boolean;
+}

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
-import { ArrowLeft, Eye, EyeOff, Lock, Mail, Smartphone } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff, Lock, Mail, Smartphone, User } from 'lucide-react-native';
 import { OtpInput } from '../components/ui/OtpInput';
 import { GoogleIcon } from '../components/common/GoogleIcon';
 import { useKeyboardInset } from '../hooks/useKeyboardInset';
@@ -12,17 +12,28 @@ import { useAuth } from '../context/AuthContext';
 import { isValidEmail, isValidPhone, localPhone } from '../utils/format';
 import { WEBSITE_URL } from '../config/api';
 
-type Mode = 'login' | 'signup' | 'password' | 'forgot';
+type Mode = 'start' | 'details' | 'verify' | 'password' | 'forgot';
+type Missing = 'email' | 'phone';
 
 const REMEMBER_KEY = 'vedrit.login.remember';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong');
 
-const maskEmail = (email: string) => {
-  const [user, domain] = email.trim().split('@');
-  if (!domain) return email;
-  const visible = user.length <= 2 ? user.slice(0, 1) : user.slice(0, 2);
-  return `${visible}${'•'.repeat(Math.max(2, user.length - visible.length))}@${domain}`;
+const looksLikeEmail = (value: string) => /[@a-z]/i.test(value);
+
+const toDigits = (value: string) => {
+  const digits = value.replace(/\D/g, '');
+  return digits.length > 10 && digits.startsWith('91') ? digits.slice(-10) : digits.slice(0, 10);
+};
+
+const mask = (value: string, isEmail: boolean) => {
+  if (isEmail) {
+    const [user, domain] = value.trim().split('@');
+    if (!domain) return value;
+    const visible = user.length <= 2 ? user.slice(0, 1) : user.slice(0, 2);
+    return `${visible}${'•'.repeat(Math.max(2, user.length - visible.length))}@${domain}`;
+  }
+  return `+91 ${value.slice(0, 2)}••••••${value.slice(-2)}`;
 };
 
 interface FieldProps extends TextInputProps {
@@ -86,24 +97,29 @@ export const LoginScreen: React.FC = () => {
   const typing = inset > 0;
   const codeRef = useRef<TextInput>(null);
 
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setMode] = useState<Mode>('start');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendIn, setResendIn] = useState(0);
   const [devOtp, setDevOtp] = useState<string | undefined>();
+  const [options, setOptions] = useState({ email: true, sms: true, password: true });
 
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
+  const [identifier, setIdentifier] = useState('');
+  const [needs, setNeeds] = useState<Missing | null>(null);
+  const [extra, setExtra] = useState('');
+  const [name, setName] = useState('');
+  const [channel, setChannel] = useState<'email' | 'sms'>('email');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const needsPhone = mode === 'signup';
-  const verifying = codeSent && mode !== 'password';
+  const isEmail = looksLikeEmail(identifier);
+  const cleanId = isEmail ? identifier.trim() : toDigits(identifier);
+  const inputType: 'empty' | 'email' | 'phone' = !identifier.trim() ? 'empty' : isEmail ? 'email' : 'phone';
 
   useEffect(() => {
+    api.loginConfig().then(setOptions).catch(() => undefined);
     SecureStore.getItemAsync(REMEMBER_KEY)
       .then((saved) => {
         if (!saved) return;
@@ -115,7 +131,7 @@ export const LoginScreen: React.FC = () => {
             value = '';
           }
         }
-        if (isValidEmail(value)) setEmail(value);
+        if (value) setIdentifier(value);
       })
       .catch(() => undefined);
   }, []);
@@ -131,14 +147,13 @@ export const LoginScreen: React.FC = () => {
     setDevOtp(undefined);
     setResendIn(0);
     setCode('');
-    setCodeSent(false);
     setPassword('');
     setConfirm('');
   };
 
-  const switchMode = (next: Mode) => {
-    setMode(next);
+  const goto = (next: Mode) => {
     resetState();
+    setMode(next);
   };
 
   const run = async (task: () => Promise<void>) => {
@@ -155,23 +170,56 @@ export const LoginScreen: React.FC = () => {
 
   const finishLogin = async (task: () => Promise<Awaited<ReturnType<typeof api.loginEmail>>>) => {
     const result = await task();
-    SecureStore.setItemAsync(REMEMBER_KEY, email.trim()).catch(() => undefined);
+    SecureStore.setItemAsync(REMEMBER_KEY, cleanId).catch(() => undefined);
     await completeLogin(result);
   };
 
   const focusCode = () => setTimeout(() => codeRef.current?.focus(), 350);
 
+  const checkIdentifier = () => {
+    if (!cleanId) return 'Enter your email or mobile number';
+    if (isEmail ? !isValidEmail(cleanId) : !isValidPhone(cleanId)) return isEmail ? 'Please enter a valid email address' : 'Please enter a valid 10-digit mobile number';
+    if (!isEmail && !options.sms) return 'Mobile OTP login is not available right now. Please use your email.';
+    if (isEmail && !options.email && mode !== 'password' && mode !== 'forgot') return 'Email login is not available right now. Please use your mobile number.';
+    return null;
+  };
+
+  const detailsPayload = () => {
+    if (!needs) return {};
+    const value = needs === 'phone' ? toDigits(extra) : extra.trim();
+    return needs === 'phone' ? { phone: value } : { email: value };
+  };
+
   const sendCode = () => {
-    const cleanEmail = email.trim();
-    if (!isValidEmail(cleanEmail)) return setError('Please enter a valid email address');
-    if (needsPhone && !isValidPhone(localPhone(phone))) return setError('Please enter a valid 10-digit mobile number');
+    if (mode === 'forgot') {
+      if (!isValidEmail(cleanId)) return setError('Enter the email of your account');
+      return run(async () => {
+        const res = await api.forgotPassword(cleanId);
+        setChannel('email');
+        setDevOtp(res.devOtp);
+        setResendIn(res.resendInSeconds);
+        setMode('verify');
+        focusCode();
+      });
+    }
+    const problem = checkIdentifier();
+    if (problem) return setError(problem);
+    if (mode === 'details') {
+      if (needs === 'phone' && !isValidPhone(toDigits(extra))) return setError('Please enter a valid 10-digit mobile number');
+      if (needs === 'email' && !isValidEmail(extra)) return setError('Please enter a valid email address');
+    }
     run(async () => {
-      const res = mode === 'forgot' ? await api.forgotPassword(cleanEmail) : await api.requestEmailOtp(cleanEmail, needsPhone ? localPhone(phone) : undefined);
-      if (mode === 'signup' && res.isNewUser === false) setMode('login');
-      setCodeSent(true);
-      setCode('');
+      const res = await api.requestLoginOtp({ identifier: cleanId, ...(mode === 'details' ? detailsPayload() : {}) });
+      if (res.needsDetails) {
+        setNeeds(res.needsDetails);
+        setExtra('');
+        setMode('details');
+        return;
+      }
+      setChannel(res.channel);
       setDevOtp(res.devOtp);
-      setResendIn(res.resendInSeconds);
+      setResendIn(res.resendInSeconds || 30);
+      setMode('verify');
       focusCode();
     });
   };
@@ -179,32 +227,34 @@ export const LoginScreen: React.FC = () => {
   const resend = () => {
     if (resendIn > 0 || loading) return;
     run(async () => {
-      const res = mode === 'forgot' ? await api.forgotPassword(email.trim()) : await api.requestEmailOtp(email.trim(), needsPhone ? localPhone(phone) : undefined);
+      const res = needsReset()
+        ? await api.forgotPassword(cleanId)
+        : await api.requestLoginOtp({ identifier: cleanId, ...(needs ? detailsPayload() : {}) });
       setCode('');
       setDevOtp(res.devOtp);
-      setResendIn(res.resendInSeconds);
+      setResendIn(res.resendInSeconds || 30);
       focusCode();
     });
   };
 
+  const needsReset = () => forgotFlow;
+  const [forgotFlow, setForgotFlow] = useState(false);
+
   const submit = (otpCode = code) => {
-    const cleanEmail = email.trim();
-    if (!isValidEmail(cleanEmail)) return setError('Please enter a valid email address');
-
     if (mode === 'password') {
+      if (!isValidEmail(cleanId)) return setError('Use your email address with a password');
       if (!password) return setError('Please enter your password');
-      return run(() => finishLogin(() => api.loginEmail(cleanEmail, password)));
+      return run(() => finishLogin(() => api.loginEmail(cleanId, password)));
     }
-
-    if (!/^\d{6}$/.test(otpCode)) return setError('Please enter the 6-digit code sent to your email');
-
-    if (mode === 'forgot') {
+    if (!/^\d{6}$/.test(otpCode)) return setError('Please enter the 6-digit code');
+    if (forgotFlow) {
       if (password.length < 8) return setError('Password must be at least 8 characters');
       if (password !== confirm) return setError('Passwords do not match');
-      return run(() => finishLogin(() => api.resetPassword(cleanEmail, otpCode, password)));
+      return run(() => finishLogin(() => api.resetPassword(cleanId, otpCode, password)));
     }
-
-    return run(() => finishLogin(() => api.verifyEmailOtp(cleanEmail, needsPhone ? localPhone(phone) : undefined, otpCode)));
+    return run(() =>
+      finishLogin(() => api.verifyLoginOtp({ identifier: cleanId, otp: otpCode, ...(needs ? detailsPayload() : {}), ...(name.trim() ? { name: name.trim() } : {}) }))
+    );
   };
 
   const eye = showPassword ? <EyeOff size={19} color="#8A7D70" /> : <Eye size={19} color="#8A7D70" />;
@@ -228,126 +278,158 @@ export const LoginScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
-  const renderVerify = () => (
-    <View>
-      {!typing ? <Steps step={2} labels={[mode === 'signup' ? 'Details' : 'Email', 'Verify']} /> : null}
-      <Text style={styles.title}>{mode === 'forgot' ? 'Reset password' : 'Enter the code'}</Text>
-      <Text style={styles.sub}>
-        We emailed a 6-digit code to <Text style={styles.bold}>{maskEmail(email)}</Text>. It can take a minute, check spam too.
-      </Text>
+  const errorBlock = error ? <Text style={styles.errorPlain}>{error}</Text> : null;
 
-      <OtpInput ref={codeRef} value={code} onChange={setCode} hasError={Boolean(error)} onComplete={mode === 'forgot' ? undefined : (c) => submit(c)} />
-      {devOtp ? <Text style={styles.devHint}>Test code: {devOtp}</Text> : null}
+  const identifierInput = (
+    <Input
+      icon={inputType === 'phone' ? <Smartphone size={19} color="#8A7D70" /> : <Mail size={19} color="#8A7D70" />}
+      prefix={inputType === 'phone' ? '+91' : undefined}
+      value={identifier}
+      onChangeText={(v) => {
+        setIdentifier(v);
+        setError(null);
+      }}
+      placeholder="Email or mobile number"
+      keyboardType={inputType === 'phone' ? 'phone-pad' : 'email-address'}
+      autoCapitalize="none"
+      autoCorrect={false}
+      autoComplete="username"
+    />
+  );
 
-      {mode === 'forgot' ? (
-        <View style={[styles.fields, styles.fieldsTop]}>
-          {passwordInput('New password', password, setPassword, 'new-password')}
-          {passwordInput('Confirm password', confirm, setConfirm, 'new-password')}
+  const renderVerify = () => {
+    const viaEmail = channel === 'email';
+    return (
+      <View>
+        {!typing ? <Steps step={2} labels={[forgotFlow ? 'Email' : 'Details', 'Verify']} /> : null}
+        <Text style={styles.title}>{forgotFlow ? 'Reset password' : 'Enter the code'}</Text>
+        <Text style={styles.sub}>
+          We {viaEmail ? 'emailed' : 'texted'} a 6-digit code to <Text style={styles.bold}>{mask(cleanId, viaEmail)}</Text>.{' '}
+          {viaEmail ? 'It can take a minute, check spam too.' : 'It usually arrives within a few seconds.'}
+        </Text>
+
+        <OtpInput ref={codeRef} value={code} onChange={setCode} hasError={Boolean(error)} onComplete={forgotFlow ? undefined : (c) => submit(c)} />
+        {devOtp ? <Text style={styles.devHint}>Test code: {devOtp}</Text> : null}
+
+        {mode === 'verify' && !forgotFlow && isNewAccount ? (
+          <View style={[styles.fields, styles.fieldsTop]}>
+            <Input icon={<User size={19} color="#8A7D70" />} value={name} onChangeText={setName} placeholder="Your name (optional)" autoComplete="name" />
+          </View>
+        ) : null}
+
+        {forgotFlow ? (
+          <View style={[styles.fields, styles.fieldsTop]}>
+            {passwordInput('New password', password, setPassword, 'new-password')}
+            {passwordInput('Confirm password', confirm, setConfirm, 'new-password')}
+          </View>
+        ) : null}
+
+        {errorBlock}
+
+        <View style={styles.actions}>{button(forgotFlow ? 'Reset & login' : 'Verify & continue', () => submit())}</View>
+
+        <View style={styles.rowCenter}>
+          <TouchableOpacity
+            onPress={() => {
+              setForgotFlow(false);
+              setNeeds(null);
+              goto('start');
+            }}
+            style={styles.inlineLink}
+          >
+            <ArrowLeft size={14} color={THEME.colors.primarySaffron} />
+            <Text style={styles.link}>{viaEmail ? 'Change email' : 'Change number'}</Text>
+          </TouchableOpacity>
+          <Text style={styles.dotSep}>•</Text>
+          <TouchableOpacity onPress={resend} disabled={resendIn > 0 || loading}>
+            <Text style={[styles.link, resendIn > 0 && styles.linkOff]}>{resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}</Text>
+          </TouchableOpacity>
         </View>
-      ) : null}
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <View style={styles.actions}>{button(mode === 'forgot' ? 'Reset & login' : 'Verify & continue', () => submit())}</View>
-
-      <View style={styles.rowCenter}>
-        <TouchableOpacity onPress={resetState} style={styles.inlineLink}>
-          <ArrowLeft size={14} color={THEME.colors.primarySaffron} />
-          <Text style={styles.link}>Change email</Text>
-        </TouchableOpacity>
-        <Text style={styles.dotSep}>•</Text>
-        <TouchableOpacity onPress={resend} disabled={resendIn > 0 || loading}>
-          <Text style={[styles.link, resendIn > 0 && styles.linkOff]}>{resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}</Text>
-        </TouchableOpacity>
       </View>
+    );
+  };
+
+  const [isNewAccount, setIsNewAccount] = useState(false);
+  useEffect(() => {
+    setIsNewAccount(Boolean(needs));
+  }, [needs]);
+
+  const renderDetails = () => (
+    <View>
+      {!typing ? <Steps step={1} labels={['Details', 'Verify']} /> : null}
+      <TouchableOpacity style={styles.inlineLinkRow} onPress={() => goto('start')} accessibilityRole="button">
+        <ArrowLeft size={15} color={THEME.colors.primarySaffron} />
+        <Text style={styles.link}>Back</Text>
+      </TouchableOpacity>
+      <Text style={styles.title}>Create your account</Text>
+      <Text style={styles.sub}>
+        New to VedRit. Add your {needs === 'phone' ? 'mobile number' : 'email'} too. We will send the code to your {inputType === 'email' ? 'email' : 'mobile'}.
+      </Text>
+      <View style={styles.fields}>
+        <View style={styles.lockedRow}>
+          {inputType === 'phone' ? <Smartphone size={18} color="#8A7D70" /> : <Mail size={18} color="#8A7D70" />}
+          <Text style={styles.lockedText} numberOfLines={1}>
+            {inputType === 'phone' ? `+91 ${cleanId}` : cleanId}
+          </Text>
+        </View>
+        {needs === 'phone' ? (
+          <Input icon={<Smartphone size={19} color="#8A7D70" />} prefix="+91" value={extra} onChangeText={(v) => setExtra(v.replace(/\D/g, '').slice(0, 10))} placeholder="Mobile number" keyboardType="phone-pad" autoComplete="tel" maxLength={10} />
+        ) : (
+          <Input icon={<Mail size={19} color="#8A7D70" />} value={extra} onChangeText={setExtra} placeholder="Email address" keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
+        )}
+      </View>
+      {errorBlock}
+      <View style={styles.actions}>{button('Send code', sendCode)}</View>
     </View>
   );
 
-  const noAccount = mode === 'login' && Boolean(error?.toLowerCase().startsWith('no account'));
-
-  const renderForm = () => (
+  const renderStart = () => (
     <View>
-      {mode === 'login' || mode === 'signup' ? (
-        <View style={styles.tabs}>
-          {(['login', 'signup'] as const).map((t) => {
-            const active = mode === t;
-            return (
-              <TouchableOpacity key={t} style={[styles.tab, active && styles.tabOn]} onPress={() => switchMode(t)} accessibilityRole="tab" accessibilityState={{ selected: active }}>
-                <Text style={[styles.tabText, active && styles.tabTextOn]}>{t === 'login' ? 'Login' : 'Sign up'}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ) : (
-        <TouchableOpacity style={styles.inlineLinkRow} onPress={() => switchMode('login')} accessibilityRole="button">
+      {!typing && mode === 'start' ? <Steps step={1} labels={['Email or mobile', 'Verify']} /> : null}
+      {mode === 'forgot' ? (
+        <TouchableOpacity style={styles.inlineLinkRow} onPress={() => goto('password')} accessibilityRole="button">
           <ArrowLeft size={15} color={THEME.colors.primarySaffron} />
           <Text style={styles.link}>Back to login</Text>
         </TouchableOpacity>
-      )}
-
-      {(mode === 'login' || mode === 'signup') && !typing ? <Steps step={1} labels={[mode === 'signup' ? 'Details' : 'Email', 'Verify']} /> : null}
-
-      <Text style={styles.title}>
-        {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : mode === 'password' ? 'Login with password' : 'Reset password'}
-      </Text>
+      ) : null}
+      <Text style={styles.title}>{mode === 'start' ? 'Login or sign up' : mode === 'password' ? 'Login with password' : 'Reset password'}</Text>
       <Text style={styles.sub}>
-        {mode === 'login'
-          ? 'Enter your email. We will send you a code to log in.'
-          : mode === 'signup'
-            ? 'Add your email and mobile number. We will email you a code to confirm.'
-            : mode === 'password'
-              ? 'Use the email and password of your account.'
-              : 'Enter your email and we will send you a code.'}
+        {mode === 'start'
+          ? 'Enter your email or mobile number. We will send you a one-time code. New here? We will create your account.'
+          : mode === 'password'
+            ? 'Use the email and password of your account.'
+            : 'Enter your email and we will send you a code.'}
       </Text>
 
       <View style={styles.fields}>
-        <Input
-          icon={<Mail size={19} color="#8A7D70" />}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Email address"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-        />
-        {needsPhone ? (
-          <Input
-            icon={<Smartphone size={19} color="#8A7D70" />}
-            prefix="+91"
-            value={phone}
-            onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
-            placeholder="Mobile number"
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            maxLength={10}
-          />
-        ) : null}
+        {identifierInput}
         {mode === 'password' ? passwordInput('Password', password, setPassword, 'password') : null}
       </View>
 
-      {error ? (
-        <View style={styles.errorWrap}>
-          <Text style={styles.errorPlain}>{error}</Text>
-          {noAccount ? (
-            <TouchableOpacity onPress={() => switchMode('signup')}>
-              <Text style={styles.link}>Create an account instead</Text>
+      {errorBlock}
+
+      <View style={styles.actions}>
+        {mode === 'password'
+          ? button('Login', () => submit())
+          : button(mode === 'forgot' ? 'Send code' : 'Continue', () => {
+              setForgotFlow(mode === 'forgot');
+              setNeeds(null);
+              sendCode();
+            })}
+      </View>
+
+      {mode === 'start' || mode === 'password' ? (
+        <View style={styles.rowCenter}>
+          {mode === 'password' || options.password ? (
+            <TouchableOpacity style={styles.inlineLink} onPress={() => goto(mode === 'start' ? 'password' : 'start')}>
+              <Lock size={13} color={THEME.colors.primarySaffron} />
+              <Text style={styles.link}>{mode === 'start' ? 'Use password instead' : 'Use a one-time code'}</Text>
             </TouchableOpacity>
           ) : null}
-        </View>
-      ) : null}
-
-      <View style={styles.actions}>{mode === 'password' ? button('Login', () => submit()) : button(mode === 'signup' ? 'Continue' : 'Send code', sendCode)}</View>
-
-      {mode === 'login' || mode === 'password' ? (
-        <View style={styles.rowCenter}>
-          <TouchableOpacity style={styles.inlineLink} onPress={() => switchMode(mode === 'login' ? 'password' : 'login')}>
-            <Lock size={13} color={THEME.colors.primarySaffron} />
-            <Text style={styles.link}>{mode === 'login' ? 'Use password instead' : 'Use email code instead'}</Text>
-          </TouchableOpacity>
           {mode === 'password' ? (
             <>
               <Text style={styles.dotSep}>•</Text>
-              <TouchableOpacity onPress={() => switchMode('forgot')}>
+              <TouchableOpacity onPress={() => goto('forgot')}>
                 <Text style={styles.linkMuted}>Forgot password?</Text>
               </TouchableOpacity>
             </>
@@ -355,7 +437,7 @@ export const LoginScreen: React.FC = () => {
         </View>
       ) : null}
 
-      {(mode === 'login' || mode === 'signup') && !typing ? (
+      {mode === 'start' && !typing ? (
         <>
           <View style={styles.orRow}>
             <View style={styles.orLine} />
@@ -379,13 +461,13 @@ export const LoginScreen: React.FC = () => {
       <Image source={require('../../assets/images/login-mandala.png')} style={[styles.mandala, { width: width * 1.5, height: width * 1.5, left: -width * 0.25 }]} resizeMode="contain" />
       <SafeAreaView style={styles.flex}>
         <View style={[styles.body, { paddingBottom: typing ? inset + 8 : 56 }]}>
-          {!typing ? (
+          {!typing && mode !== 'verify' ? (
             <View style={styles.greeting}>
               <Text style={styles.greetHindi}>स्वागतम्</Text>
               <Text style={styles.greetSub}>Puja, appointments and kundli with Pandit Ji</Text>
             </View>
           ) : null}
-          <View style={styles.card}>{verifying ? renderVerify() : renderForm()}</View>
+          <View style={styles.card}>{mode === 'verify' ? renderVerify() : mode === 'details' ? renderDetails() : renderStart()}</View>
         </View>
         {!typing ? (
           <Text style={styles.legal}>
@@ -410,11 +492,6 @@ const styles = StyleSheet.create({
   greetHindi: { fontSize: 38, fontWeight: '800', color: C.primarySaffron, lineHeight: 52 },
   greetSub: { fontSize: 14, color: C.bodyText, marginTop: 2, textAlign: 'center' },
   card: { backgroundColor: '#FFFFFF', borderRadius: 24, borderWidth: 1.5, borderColor: '#EFE3D0', padding: 20 },
-  tabs: { flexDirection: 'row', backgroundColor: '#F7EFE3', borderRadius: 14, padding: 4, marginBottom: 18 },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 11 },
-  tabOn: { backgroundColor: C.primarySaffron },
-  tabText: { fontSize: 14, fontWeight: '800', color: C.bodyText },
-  tabTextOn: { color: '#FFFFFF' },
   steps: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   stepItem: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   stepDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#DCCDB8', alignItems: 'center', justifyContent: 'center' },
@@ -442,15 +519,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   fieldFocused: { borderColor: C.primarySaffron, backgroundColor: '#FFFFFF' },
+  lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 48, borderRadius: 14, backgroundColor: '#F7EFE3', paddingHorizontal: 14 },
+  lockedText: { flex: 1, color: C.heading, fontSize: 15, fontWeight: '700' },
   prefix: { color: C.heading, fontSize: 15, fontWeight: '800' },
   input: { flex: 1, color: C.heading, fontSize: 15.5, paddingVertical: 0, height: '100%' },
   actions: { marginTop: 18 },
   button: { height: 54, borderRadius: 14, backgroundColor: C.primarySaffron, alignItems: 'center', justifyContent: 'center' },
   buttonBusy: { opacity: 0.75 },
   buttonText: { color: '#FFFFFF', fontSize: 16.5, fontWeight: '800' },
-  errorWrap: { marginTop: 12, gap: 6 },
-  errorPlain: { color: '#B91C1C', fontSize: 13.5, fontWeight: '600' },
-  error: { color: '#B91C1C', fontSize: 13.5, fontWeight: '600', marginTop: 12 },
+  errorPlain: { color: '#B91C1C', fontSize: 13.5, fontWeight: '600', marginTop: 12 },
   devHint: { fontSize: 12.5, color: C.bilvaGreen, marginTop: 10 },
   rowCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 16 },
   inlineLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },

@@ -1,6 +1,8 @@
 import { API_BASE_URL } from '../config/api';
 import { session } from './session';
 import type {
+  LoginOptions,
+  LoginRequestResult,
   InboxNotification,
   ApiProduct,
   ApiPuja,
@@ -135,6 +137,11 @@ export interface EmailOtpResult {
 }
 
 export const api = {
+  loginConfig: () => request<LoginOptions>('GET', '/auth/config', undefined, false),
+  requestLoginOtp: (input: { identifier: string; email?: string; phone?: string }) =>
+    request<LoginRequestResult>('POST', '/auth/login/request', input, false),
+  verifyLoginOtp: (input: { identifier: string; otp: string; email?: string; phone?: string; name?: string }) =>
+    request<AuthResult>('POST', '/auth/login/verify', input, false),
   requestEmailOtp: (email: string, phone?: string) => request<EmailOtpResult>('POST', '/auth/email/request-otp', { email, ...(phone ? { phone } : {}) }, false),
   verifyEmailOtp: (email: string, phone: string | undefined, otp: string) =>
     request<AuthResult>('POST', '/auth/email/verify-otp', { email, ...(phone ? { phone } : {}), otp }, false),

@@ -244,6 +244,7 @@ export interface Settings {
   allowPayLater: boolean;
   allowCod: boolean;
   userCancelHours: number;
+  auth?: { emailLogin: boolean; smsLogin: boolean; passwordLogin: boolean };
 }
 
 export interface HomeSettings {
@@ -576,4 +577,9 @@ export interface BroadcastInput {
   ctaUrl: string;
   audience: BroadcastAudience;
   schedule: { mode: 'draft' | 'now' | 'later'; at?: string };
+}
+
+export interface AuthStatus {
+  email: { enabled: boolean; from: string };
+  sms: { enabled: boolean; provider: string; balance: { credits?: number; error?: string } | null };
 }

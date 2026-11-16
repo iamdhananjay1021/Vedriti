@@ -1,4 +1,5 @@
 import type {
+  AuthStatus,
   AudiencePreview,
   BroadcastAudience,
   BroadcastInput,
@@ -156,6 +157,7 @@ export const adminApi = {
   },
 
   settings: () => request<Settings>('GET', '/admin/settings'),
+  authStatus: () => request<AuthStatus>('GET', '/admin/auth-status'),
   saveSettings: (s: Partial<Settings>) => request<Settings>('PUT', '/admin/settings', s),
 
   day: (date: string, duration?: number) => request<DayView>('GET', `/admin/schedule${qs({ date, duration })}`),

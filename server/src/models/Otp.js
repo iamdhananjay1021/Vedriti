@@ -11,6 +11,8 @@ const OtpSchema = new Schema(
     attempts: { type: Number, default: 0 },
     lastSentAt: { type: Date, required: true },
     expiresAt: { type: Date, required: true },
+    windowStart: { type: Date, default: null },
+    sendsInWindow: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

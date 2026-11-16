@@ -18,6 +18,8 @@ import { Announcement } from '../models/Announcement.js';
 import { getSettings } from '../models/Settings.js';
 import { AppError, asyncHandler } from '../middlewares/errorHandler.js';
 import { signAdminToken } from '../services/authService.js';
+import { isSmsEnabled, smsBalance, smsProviderName } from '../services/smsService.js';
+import { isResendConfigured } from '../config/env.js';
 import { blockTimeRange, getAvailableSlots, releaseSlot, reserveSlot, restoreSlot, unblockGroup } from '../services/slotService.js';
 import { serializeBooking } from './bookingController.js';
 import { restock, serializeOrder } from './orderController.js';
@@ -662,6 +664,7 @@ export const SettingsSchema = z
       DOSHA_NIVARAN: z.number().min(0),
       GENERAL_QUERY: z.number().min(0),
     }),
+    auth: z.object({ emailLogin: z.boolean(), smsLogin: z.boolean(), passwordLogin: z.boolean() }),
     deliveryCharge: z.number().min(0).max(10000),
     freeDeliveryAbove: z.number().min(0).max(1000000),
     allowPayLater: z.boolean(),
@@ -695,6 +698,16 @@ export const SettingsSchema = z
     message: 'Each working day must end after it starts',
     path: ['schedule'],
   });
+
+export const getAuthStatus = asyncHandler(async (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      email: { enabled: isResendConfigured(), from: config.emailFrom },
+      sms: { enabled: isSmsEnabled(), provider: smsProviderName(), balance: await smsBalance() },
+    },
+  });
+});
 
 export const getAdminSettings = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await getSettings() });

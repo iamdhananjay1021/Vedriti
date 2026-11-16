@@ -47,6 +47,9 @@ export const config = {
   otpResendSeconds: 30,
   smsProvider: (read('SMS_PROVIDER') || 'none').toLowerCase(),
   fast2smsApiKey: read('FAST2SMS_API_KEY'),
+  twoFactorApiKey: read('TWOFACTOR_API_KEY') || read('TWO_FACTOR_API_KEY') || read('2FACTOR_API_KEY') || read('TWOFACTOR_KEY'),
+  twoFactorOtpTemplate: read('TWOFACTOR_OTP_TEMPLATE'),
+  twoFactorSenderId: read('TWOFACTOR_SENDER_ID'),
   resendApiKey: read('RESEND_API_KEY'),
   emailFrom: read('EMAIL_FROM') || 'VedRit <no-reply@vedrit.in>',
   devUser: {

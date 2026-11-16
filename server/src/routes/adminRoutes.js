@@ -16,6 +16,7 @@ router.use(requireAdmin);
 
 router.get('/me', admin.adminMe);
 router.get('/stats', admin.getStats);
+router.get('/auth-status', admin.getAuthStatus);
 
 router.get('/bookings', admin.listBookings);
 router.patch('/bookings/:id', validateBody(admin.UpdateBookingSchema), admin.updateBooking);

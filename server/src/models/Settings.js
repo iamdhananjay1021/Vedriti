@@ -70,6 +70,11 @@ const SettingsSchema = new Schema(
         japa: { type: Boolean, default: true },
       },
     },
+    auth: {
+      emailLogin: { type: Boolean, default: true },
+      smsLogin: { type: Boolean, default: true },
+      passwordLogin: { type: Boolean, default: true },
+    },
     deliveryCharge: { type: Number, default: 79, min: 0 },
     freeDeliveryAbove: { type: Number, default: 999, min: 0 },
     allowPayLater: { type: Boolean, default: true },

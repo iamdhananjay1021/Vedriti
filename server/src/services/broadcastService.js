@@ -5,7 +5,7 @@ import { User } from '../models/User.js';
 import { Booking } from '../models/Booking.js';
 import { Order } from '../models/Order.js';
 import { Broadcast, BroadcastDelivery, BroadcastTemplate, MARKETING_TYPES, Notification } from '../models/Broadcast.js';
-import { isSmsEnabled } from './smsService.js';
+import { isBroadcastSmsEnabled as isSmsEnabled, sendBroadcastSms, smsProviderName } from './smsService.js';
 import { normalizePhone } from '../utils/ids.js';
 
 const EMAIL_BATCH_SIZE = 50;
@@ -221,21 +221,16 @@ export const sendTestEmail = async (to, broadcast) => {
   if (!result.ok) throw new Error(result.error || 'Could not send test email');
 };
 
-const sendSmsBatch = async (numbers, message) => {
-  const url = new URL('https://www.fast2sms.com/dev/bulkV2');
-  url.searchParams.set('route', 'q');
-  url.searchParams.set('message', message);
-  url.searchParams.set('numbers', numbers.map((n) => n.slice(-10)).join(','));
-  url.searchParams.set('flash', '0');
-  const res = await fetch(url, { headers: { authorization: config.fast2smsApiKey } });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok || body.return === false) return { ok: false, error: body?.message?.[0] || body?.message || `SMS provider error ${res.status}` };
-  return { ok: true, id: body.request_id || '' };
-};
+const sendSmsBatch = sendBroadcastSms;
 
 export const smsStatus = () => ({
   enabled: isSmsEnabled(),
-  note: isSmsEnabled() ? 'SMS provider connected' : 'SMS provider not configured yet. SMS messages are queued as pending and sent once it is connected.',
+  provider: smsProviderName(),
+  note: isSmsEnabled()
+    ? 'SMS provider connected'
+    : smsProviderName() === '2factor'
+      ? 'Mobile OTP is live. Promotional SMS needs an approved sender ID (TWOFACTOR_SENDER_ID). Until then SMS broadcasts stay pending.'
+      : 'SMS provider not configured yet. SMS messages are queued as pending and sent once it is connected.',
 });
 
 export const emailStatus = () => ({

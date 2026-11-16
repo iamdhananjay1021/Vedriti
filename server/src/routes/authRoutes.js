@@ -6,6 +6,9 @@ import { validateBody } from '../middlewares/validateRequest.js';
 
 const router = Router();
 
+router.get('/config', auth.handleLoginConfig);
+router.post('/login/request', authLimiter, validateBody(auth.LoginRequestSchema), auth.handleLoginRequest);
+router.post('/login/verify', authLimiter, validateBody(auth.LoginVerifySchema), auth.handleLoginVerify);
 router.post('/signup-email', authLimiter, validateBody(auth.EmailSignupSchema), auth.handleEmailSignup);
 router.post('/login-email', authLimiter, validateBody(auth.EmailLoginSchema), auth.handleEmailLogin);
 router.post('/email/request-otp', authLimiter, validateBody(auth.LoginOtpRequestSchema), auth.handleEmailOtpRequest);

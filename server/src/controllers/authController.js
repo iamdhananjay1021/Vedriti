@@ -11,6 +11,18 @@ const passwordField = z.string().min(8, 'Password must be at least 8 characters'
 
 const phoneField = z.string().trim().min(10, 'Please enter a valid 10-digit mobile number').max(16);
 
+const identifierField = z.string().trim().min(3, 'Enter your email or mobile number').max(120);
+
+export const LoginRequestSchema = z.object({ identifier: identifierField, email: z.string().trim().max(120).optional(), phone: z.string().trim().max(20).optional() });
+
+export const LoginVerifySchema = z.object({
+  identifier: identifierField,
+  otp: otpField,
+  email: z.string().trim().max(120).optional(),
+  phone: z.string().trim().max(20).optional(),
+  name: trimmed(80).optional(),
+});
+
 export const EmailOtpRequestSchema = z.object({ email: emailField });
 
 const optionalPhone = z.string().trim().max(16).optional();
@@ -68,6 +80,18 @@ export const FamilyMemberSchema = z.object({
   dateOfBirth: z.union([z.string().regex(DATE_REGEX), z.literal('')]).optional().default(''),
   rashi: trimmed(40).optional().default(''),
   nakshatra: trimmed(40).optional().default(''),
+});
+
+export const handleLoginConfig = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await authService.loginOptions() });
+});
+
+export const handleLoginRequest = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await authService.requestLoginOtp(req.body) });
+});
+
+export const handleLoginVerify = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await authService.verifyLoginOtp(req.body) });
 });
 
 export const handleEmailSignup = asyncHandler(async (req, res) => {

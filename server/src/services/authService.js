@@ -8,6 +8,8 @@ import { Booking } from '../models/Booking.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { normalizePhone } from '../utils/ids.js';
 import { sendOtpEmail } from './emailService.js';
+import { isSmsEnabled, sendOtpSms } from './smsService.js';
+import { getSettings } from '../models/Settings.js';
 import { Media } from '../models/Media.js';
 import { detectImageType, mediaIdFromUrl, mediaUrl } from '../utils/media.js';
 import { releaseSlot } from './slotService.js';
@@ -42,7 +44,9 @@ const authResult = async (user, isNewUser) => {
   return { token: signUserToken(user), user: user.toPublic(), isNewUser };
 };
 
-const channelReady = () => isResendConfigured();
+const channelReady = (channel) => (channel === 'sms' ? isSmsEnabled() : isResendConfigured());
+
+const SMS_HOURLY_LIMIT = 5;
 
 const otpKey = (channel, target, purpose) => `${purpose}:${channel}:${target}`;
 
@@ -56,10 +60,18 @@ const issueOtp = async ({ channel, target, purpose }) => {
     }
   }
 
+  if (channel === 'sms') {
+    const fresh = existing?.windowStart && Date.now() - existing.windowStart.getTime() < 3600000;
+    if (fresh && existing.sendsInWindow >= SMS_HOURLY_LIMIT) {
+      throw new AppError('Too many SMS requests for this number. Please try again after an hour or use email.', 429);
+    }
+  }
+
   const code = randomCode();
   const send = true;
   if (send) {
-    await sendOtpEmail(target, code, purpose);
+    if (channel === 'sms') await sendOtpSms(target, code);
+    else await sendOtpEmail(target, code, purpose);
   }
 
   const now = new Date();
@@ -73,6 +85,8 @@ const issueOtp = async ({ channel, target, purpose }) => {
       attempts: 0,
       lastSentAt: now,
       expiresAt: new Date(now.getTime() + config.otpExpiryMinutes * 60000),
+      windowStart: existing?.windowStart && now.getTime() - existing.windowStart.getTime() < 3600000 ? existing.windowStart : now,
+      sendsInWindow: existing?.windowStart && now.getTime() - existing.windowStart.getTime() < 3600000 ? (existing.sendsInWindow || 0) + 1 : 1,
     },
     { upsert: true }
   );
@@ -80,7 +94,7 @@ const issueOtp = async ({ channel, target, purpose }) => {
   return {
     resendInSeconds: config.otpResendSeconds,
     expiresInMinutes: config.otpExpiryMinutes,
-    devOtp: !config.isProduction && !channelReady() ? code : undefined,
+    devOtp: !config.isProduction && !channelReady(channel) ? code : undefined,
   };
 };
 
@@ -356,4 +370,103 @@ export const deleteAccount = async (userId) => {
   const user = await User.findById(userId).select('avatarUrl');
   await dropAvatarMedia(user?.avatarUrl);
   await User.deleteOne({ _id: userId });
+};
+
+export const loginOptions = async () => {
+  const settings = await getSettings();
+  const auth = settings.auth || {};
+  return {
+    email: auth.emailLogin !== false && isResendConfigured(),
+    sms: auth.smsLogin !== false && (isSmsEnabled() || !config.isProduction),
+    password: auth.passwordLogin !== false,
+  };
+};
+
+const parseIdentifier = (raw) => {
+  const value = String(raw || '').trim();
+  if (!value) throw new AppError('Please enter your email or mobile number', 400);
+  if (value.includes('@')) {
+    const email = cleanEmail(value);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) throw new AppError('Please enter a valid email address', 400);
+    return { type: 'email', channel: 'email', email, phone: '' };
+  }
+  const phone = normalizePhone(value);
+  if (!phone) throw new AppError('Please enter a valid email or 10-digit mobile number', 400);
+  return { type: 'phone', channel: 'sms', email: '', phone };
+};
+
+const ensureChannelAllowed = async (channel) => {
+  const settings = await getSettings();
+  const options = await loginOptions();
+  if (channel === 'sms' && !options.sms) throw new AppError('Mobile OTP login is not available right now. Please use your email.', 403);
+  if (channel === 'email' && settings.auth?.emailLogin === false) throw new AppError('Email login is not available right now. Please use your mobile number.', 403);
+};
+
+const completeDetails = async (id, extra) => {
+  if (id.type === 'email') {
+    const given = String(extra.phone || '').trim();
+    if (!given) return { missing: 'phone' };
+    const phone = requirePhone(given);
+    if (await User.exists({ phone })) {
+      throw new AppError('This mobile number is already registered with another account. Please login with it.', 409);
+    }
+    return { email: id.email, phone };
+  }
+  const given = String(extra.email || '').trim();
+  if (!given) return { missing: 'email' };
+  const email = cleanEmail(given);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) throw new AppError('Please enter a valid email address', 400);
+  if (await User.exists({ email })) {
+    throw new AppError('This email is already registered with another account. Please login with it.', 409);
+  }
+  return { email, phone: id.phone };
+};
+
+const findByIdentifier = (id) => User.findOne(id.type === 'email' ? { email: id.email } : { phone: id.phone });
+
+export const requestLoginOtp = async ({ identifier, email, phone }) => {
+  const id = parseIdentifier(identifier);
+  await ensureChannelAllowed(id.channel);
+  const existing = await findByIdentifier(id);
+  if (existing?.isBlocked) throw new AppError(BLOCKED_MESSAGE, 403);
+
+  if (!existing) {
+    const details = await completeDetails(id, { email, phone });
+    if (details.missing) {
+      return { channel: id.channel, isNewUser: true, needsDetails: details.missing };
+    }
+  }
+
+  const target = id.type === 'email' ? id.email : id.phone;
+  const result = await issueOtp({ channel: id.channel, target, purpose: 'login' });
+  return { channel: id.channel, target, isNewUser: !existing, needsDetails: null, ...result };
+};
+
+export const verifyLoginOtp = async ({ identifier, otp, email, phone, name }) => {
+  const id = parseIdentifier(identifier);
+  await ensureChannelAllowed(id.channel);
+  const existing = await findByIdentifier(id);
+  if (existing?.isBlocked) throw new AppError(BLOCKED_MESSAGE, 403);
+
+  let details = null;
+  if (!existing) {
+    details = await completeDetails(id, { email, phone });
+    if (details.missing) throw new AppError(details.missing === 'phone' ? 'Please add your mobile number' : 'Please add your email', 400);
+  }
+
+  const target = id.type === 'email' ? id.email : id.phone;
+  await consumeOtp({ channel: id.channel, target, purpose: 'login', code: otp });
+
+  const { user, isNewUser } = existing
+    ? { user: existing, isNewUser: false }
+    : await findOrCreate(id.type === 'email' ? { email: id.email } : { phone: id.phone }, {
+        email: details.email,
+        phone: details.phone,
+        authProvider: id.type === 'email' ? 'email' : 'phone',
+        emailVerified: id.type === 'email',
+        name: name?.trim() || '',
+      });
+
+  if (id.type === 'email' && !user.emailVerified) user.emailVerified = true;
+  return authResult(user, isNewUser);
 };

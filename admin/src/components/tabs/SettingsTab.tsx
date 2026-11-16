@@ -12,6 +12,7 @@ import {
   CreditCard,
   Flame,
   HelpCircle,
+  KeyRound,
   IndianRupee,
   MapPin,
   MessageCircle,
@@ -34,6 +35,8 @@ export function SettingsTab() {
   const toast = useToast();
   const fetcher = useCallback(() => adminApi.settings(), []);
   const { data: s, error, reload: load, setData: setS } = useLoader<Settings>(fetcher);
+  const statusFetcher = useCallback(() => adminApi.authStatus(), []);
+  const { data: authStatus } = useLoader(statusFetcher);
 
   if (error) return <ErrorBox message={error} onRetry={load} />;
   if (!s) return <Spinner />;
@@ -68,6 +71,7 @@ export function SettingsTab() {
         allowPayLater,
         allowCod,
         userCancelHours,
+        auth,
       } = s;
 
       const updated = await adminApi.saveSettings({
@@ -92,6 +96,7 @@ export function SettingsTab() {
         allowPayLater,
         allowCod,
         userCancelHours,
+        ...(auth ? { auth } : {}),
       });
 
       setS(updated);
@@ -489,6 +494,55 @@ export function SettingsTab() {
             </div>
           ))}
         </div>
+      </Card>
+
+      {/* CARD: LOGIN & OTP */}
+      <Card className="space-y-5 p-6 shadow-sm">
+        <div className="flex items-center gap-3 border-b border-[var(--border-color)] pb-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-blue-700 dark:text-blue-400 shadow-xs">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-black">Login &amp; OTP</h2>
+            <p className="text-xs text-[var(--text-secondary)]">Choose how devotees can sign in. Changes apply to the app immediately.</p>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-[var(--border-color)] p-4">
+            <p className="text-xs font-bold text-[var(--text-secondary)]">Email OTP provider (Resend)</p>
+            <p className="mt-1 text-sm font-black">{authStatus ? (authStatus.email.enabled ? 'Connected' : 'Not configured') : '...'}</p>
+            {authStatus?.email.from ? <p className="mt-1 text-[11px] text-[var(--text-muted)]">Sends from {authStatus.email.from}</p> : null}
+          </div>
+          <div className="rounded-xl border border-[var(--border-color)] p-4">
+            <p className="text-xs font-bold text-[var(--text-secondary)]">Mobile OTP provider</p>
+            <p className="mt-1 text-sm font-black">
+              {authStatus ? (authStatus.sms.enabled ? `Connected (${authStatus.sms.provider})` : 'Not configured') : '...'}
+            </p>
+            {authStatus?.sms.balance ? (
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                {authStatus.sms.balance.error ? authStatus.sms.balance.error : `SMS credits left: ${authStatus.sms.balance.credits}`}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-6 pt-1">
+          <Toggle
+            checked={s.auth?.emailLogin !== false}
+            onChange={(v) => set('auth', { emailLogin: v, smsLogin: s.auth?.smsLogin !== false, passwordLogin: s.auth?.passwordLogin !== false })}
+            label="Allow login with Email OTP"
+          />
+          <Toggle
+            checked={s.auth?.smsLogin !== false}
+            onChange={(v) => set('auth', { emailLogin: s.auth?.emailLogin !== false, smsLogin: v, passwordLogin: s.auth?.passwordLogin !== false })}
+            label="Allow login with Mobile OTP"
+          />
+          <Toggle
+            checked={s.auth?.passwordLogin !== false}
+            onChange={(v) => set('auth', { emailLogin: s.auth?.emailLogin !== false, smsLogin: s.auth?.smsLogin !== false, passwordLogin: v })}
+            label="Allow login with password"
+          />
+        </div>
+        <p className="text-[11px] text-[var(--text-muted)]">Turn off a method only if you are sure users have another way to sign in. Remember to press Save changes below.</p>
       </Card>
 
       {/* CARD 6: PAYMENTS & STORE RULES */}
