@@ -23,6 +23,10 @@ export const LoginVerifySchema = z.object({
   name: trimmed(80).optional(),
 });
 
+export const SignupRequestSchema = z.object({ email: emailField, phone: z.string().trim().min(10, 'Enter a valid 10-digit mobile number').max(20) });
+
+export const SignupVerifySchema = SignupRequestSchema.extend({ otp: otpField, name: trimmed(80).optional() });
+
 export const EmailOtpRequestSchema = z.object({ email: emailField });
 
 const optionalPhone = z.string().trim().max(16).optional();
@@ -84,6 +88,14 @@ export const FamilyMemberSchema = z.object({
 
 export const handleLoginConfig = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await authService.loginOptions() });
+});
+
+export const handleSignupRequest = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await authService.requestSignupOtp(req.body) });
+});
+
+export const handleSignupVerify = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await authService.verifySignupOtp(req.body) });
 });
 
 export const handleLoginRequest = asyncHandler(async (req, res) => {

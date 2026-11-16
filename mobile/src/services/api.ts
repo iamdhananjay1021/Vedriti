@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config/api';
 import { session } from './session';
 import type {
+  SignupRequestResult,
   LoginOptions,
   LoginRequestResult,
   InboxNotification,
@@ -137,6 +138,9 @@ export interface EmailOtpResult {
 }
 
 export const api = {
+  requestSignupOtp: (input: { email: string; phone: string }) => request<SignupRequestResult>('POST', '/auth/signup/request', input, false),
+  verifySignupOtp: (input: { email: string; phone: string; otp: string; name?: string }) =>
+    request<AuthResult>('POST', '/auth/signup/verify', input, false),
   loginConfig: () => request<LoginOptions>('GET', '/auth/config', undefined, false),
   requestLoginOtp: (input: { identifier: string; email?: string; phone?: string }) =>
     request<LoginRequestResult>('POST', '/auth/login/request', input, false),

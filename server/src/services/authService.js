@@ -376,7 +376,7 @@ export const loginOptions = async () => {
   const settings = await getSettings();
   const auth = settings.auth || {};
   return {
-    email: auth.emailLogin !== false && isResendConfigured(),
+    email: auth.emailLogin !== false && (isResendConfigured() || !config.isProduction),
     sms: auth.smsLogin !== false && (isSmsEnabled() || !config.isProduction),
     password: auth.passwordLogin !== false,
   };
@@ -468,5 +468,75 @@ export const verifyLoginOtp = async ({ identifier, otp, email, phone, name }) =>
       });
 
   if (id.type === 'email' && !user.emailVerified) user.emailVerified = true;
+  return authResult(user, isNewUser);
+};
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const signupIdentity = async (rawEmail, rawPhone) => {
+  const email = cleanEmail(rawEmail);
+  if (!EMAIL_RE.test(email)) throw new AppError('Please enter a valid email address', 400);
+  const phone = requirePhone(rawPhone);
+  const [byEmail, byPhone] = await Promise.all([User.findOne({ email }), User.findOne({ phone })]);
+  if (byEmail?.isBlocked || byPhone?.isBlocked) throw new AppError(BLOCKED_MESSAGE, 403);
+  const same = byEmail && byPhone && String(byEmail._id) === String(byPhone._id);
+  if ((byEmail || byPhone) && !same) {
+    throw new AppError('This email or mobile number is already registered. Please login instead.', 409);
+  }
+  return { email, phone, existing: byEmail || null };
+};
+
+export const requestSignupOtp = async ({ email: rawEmail, phone: rawPhone }) => {
+  const { email, phone, existing } = await signupIdentity(rawEmail, rawPhone);
+  const options = await loginOptions();
+  const jobs = [];
+  if (options.email) jobs.push({ channel: 'email', target: email });
+  if (options.sms) jobs.push({ channel: 'sms', target: phone });
+  if (!jobs.length) throw new AppError('Sign up is not available right now. Please try again later.', 503);
+
+  const settled = await Promise.allSettled(jobs.map((j) => issueOtp({ ...j, purpose: 'login' })));
+  const delivered = [];
+  const devCodes = {};
+  let firstError = null;
+  settled.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      delivered.push(jobs[i].channel);
+      if (r.value.devOtp) devCodes[jobs[i].channel] = r.value.devOtp;
+    } else if (!firstError) firstError = r.reason;
+  });
+  if (!delivered.length) throw firstError;
+
+  const first = settled.find((r) => r.status === 'fulfilled').value;
+  return {
+    email,
+    phone,
+    channels: delivered,
+    isNewUser: !existing,
+    resendInSeconds: first.resendInSeconds,
+    expiresInMinutes: first.expiresInMinutes,
+    devOtp: devCodes.email || devCodes.sms,
+  };
+};
+
+export const verifySignupOtp = async ({ email: rawEmail, phone: rawPhone, otp, name }) => {
+  const { email, phone, existing } = await signupIdentity(rawEmail, rawPhone);
+
+  let verified = null;
+  const errors = [];
+  for (const channel of ['email', 'sms']) {
+    try {
+      await consumeOtp({ channel, target: channel === 'email' ? email : phone, purpose: 'login', code: otp });
+      verified = channel;
+      break;
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (!verified) throw errors.find((e) => /^Incorrect|Too many/.test(e.message)) || errors[0];
+
+  const { user, isNewUser } = existing
+    ? { user: existing, isNewUser: false }
+    : await findOrCreate({ email }, { email, phone, authProvider: verified === 'email' ? 'email' : 'phone', emailVerified: verified === 'email', name: name?.trim() || '' });
+  if (verified === 'email' && !user.emailVerified) user.emailVerified = true;
   return authResult(user, isNewUser);
 };

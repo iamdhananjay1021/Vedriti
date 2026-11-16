@@ -362,3 +362,13 @@ export interface LoginOptions {
   sms: boolean;
   password: boolean;
 }
+
+export interface SignupRequestResult {
+  email: string;
+  phone: string;
+  channels: ('email' | 'sms')[];
+  isNewUser: boolean;
+  resendInSeconds: number;
+  expiresInMinutes: number;
+  devOtp?: string;
+}
