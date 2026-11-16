@@ -4,12 +4,9 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Flame, Sparkles, ChevronRight, Award } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { AppBackground } from '../components/common/AppBackground';
 import { AppHeader } from '../components/common/AppHeader';
 import { AnnouncementStrip } from '../components/home/AnnouncementStrip';
@@ -18,21 +15,17 @@ import { QuickActions } from '../components/home/QuickActions';
 import { NextBookingCard } from '../components/home/NextBookingCard';
 import { PanchangCard } from '../components/home/PanchangCard';
 import { GeetaSuvicharCard } from '../components/home/GeetaSuvicharCard';
-import { RashifalWidget } from '../components/home/RashifalWidget';
 import { VratFestivalTracker } from '../components/home/VratFestivalTracker';
 import { DevoteeTestimonials } from '../components/home/DevoteeTestimonials';
 import { PopularPujas } from '../components/home/PopularPujas';
 import { KitRail } from '../components/home/KitRail';
 import { PanditProfileSection } from '../components/home/PanditProfileSection';
-import { KundliPromo } from '../components/home/KundliPromo';
-import { MantraJapaWidget } from '../components/home/MantraJapaWidget';
 import { SupportCard } from '../components/home/SupportCard';
 import { ChatFloatingButton } from '../components/chat/ChatFloatingButton';
 import { VirtualMandirModal } from '../components/mandir/VirtualMandirModal';
 import { SmartJapaModal } from '../components/japa/SmartJapaModal';
 import { DailyRashifalModal } from '../components/home/DailyRashifalModal';
 import { AartiSangrahModal } from '../components/aarti/AartiSangrahModal';
-import { SamuhikSection } from '../components/samuhik/SamuhikSection';
 import { SPACE } from '../constants/ui';
 import { THEME } from '../constants/theme';
 import { useAppData } from '../context/AppDataContext';
@@ -50,7 +43,7 @@ interface HomeScreenProps {
 }
 
 const Block: React.FC<{ order: number; children: React.ReactNode }> = ({ order, children }) => (
-  <Animated.View entering={FadeInDown.delay(80 + order * 90).duration(450)} style={styles.block}>
+  <Animated.View entering={FadeInDown.delay(60 + order * 70).duration(400)} style={styles.block}>
     {children}
   </Animated.View>
 );
@@ -119,17 +112,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
       >
+        {/* Priority 1: Flash Announcement Strip (if active) */}
         {home.announcement ? (
           <Block order={next()}>
             <AnnouncementStrip text={home.announcement} />
           </Block>
         ) : null}
 
+        {/* Priority 2: Sacred Festival & Auspicious Occasions Banners */}
         <Block order={next()}>
           <BannerCarousel banners={home.banners} onPressBanner={openBanner} />
         </Block>
 
-        {/* 8-Action Expansive Spiritual Quick Grid */}
+        {/* Priority 3: Today's Sacred Vedic Panchang & Muhurat */}
+        {home.panchang ? (
+          <Block order={next()}>
+            <PanchangCard panchang={home.panchang} />
+          </Block>
+        ) : null}
+
+        {/* Priority 4: 8-Action Sacred Shortcuts Grid */}
         <View style={styles.block}>
           <QuickActions
             onBookPujaPress={() => onNavigateTab('pujas')}
@@ -143,135 +145,60 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           />
         </View>
 
-        {/* SACRED SPIRITUAL SADHANA BAR: Virtual Mandir & Smart Japa */}
-        <View style={styles.sadhanaStrip}>
-          {/* Card 1: Virtual Mandir & Diya Lighting */}
-          <TouchableOpacity
-            onPress={() => setMandirModalOpen(true)}
-            style={styles.sadhanaCard}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['#7C2D12', '#431407']}
-              style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
-            />
-            <View style={styles.sadhanaCardContent}>
-              <View style={styles.sadhanaIconRow}>
-                <View style={styles.sadhanaIconBadgeOrange}>
-                  <Flame size={16} color="#FEF3C7" />
-                </View>
-                <View style={styles.streakBadgePill}>
-                  <Text style={styles.streakBadgeText}>
-                    {user?.dailyPujaStreak ? `${user.dailyPujaStreak} दिन 🔥` : 'नित्य दीप'}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.sadhanaTitle}>दैनिक मंदिर</Text>
-              <Text style={styles.sadhanaSubtitle}>दीप प्रज्ज्वलन व दर्शन</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Card 2: Smart Rudraksha Japa Mala (108 Beads) */}
-          <TouchableOpacity
-            onPress={() => setJapaModalOpen(true)}
-            style={styles.sadhanaCard}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['#78350F', '#451A03']}
-              style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
-            />
-            <View style={styles.sadhanaCardContent}>
-              <View style={styles.sadhanaIconRow}>
-                <View style={styles.sadhanaIconBadgeAmber}>
-                  <Sparkles size={16} color="#FEF3C7" />
-                </View>
-                <View style={styles.malaCountPill}>
-                  <Text style={styles.malaCountText}>108 मनके</Text>
-                </View>
-              </View>
-              <Text style={styles.sadhanaTitle}>रुद्राक्ष माला</Text>
-              <Text style={styles.sadhanaSubtitle}>स्मार्ट मन्त्र जप काउंटर</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
+        {/* Priority 5: Active Booking Card (if devotee has an upcoming booking) */}
         <Block order={next()}>
           <NextBookingCard onPress={onOpenBookings} />
         </Block>
 
-        {/* Feature 3: SAMUHIK FESTIVAL PUJAS SECTION */}
-        <Block order={next()}>
-          <SamuhikSection
-            userProfile={{
-              name: user?.name,
-              phone: user?.phone,
-              gotra: user?.gotra,
-            }}
-          />
-        </Block>
-
-        {/* DAILY GEETA SHLOKA & SUVICHAR (1-Tap WhatsApp Share) */}
-        <Block order={next()}>
-          <GeetaSuvicharCard />
-        </Block>
-
-        {/* LIVE VEDIC PANCHANG & CHOGHADIYA CARD */}
-        {home.panchang ? (
-          <Block order={next()}>
-            <PanchangCard panchang={home.panchang} />
-          </Block>
-        ) : null}
-
-        {/* DAILY RASHIFAL (12 Rashis Widget) */}
-        <Block order={next()}>
-          <RashifalWidget />
-        </Block>
-
-        {/* UPCOMING VRATS & FESTIVALS CALENDAR */}
-        <Block order={next()}>
-          <VratFestivalTracker onSelectVratPuja={handleSelectVratPuja} />
-        </Block>
-
-        {sections.popularPujas ? (
-          <Block order={next()}>
-            <PopularPujas onSelectPuja={onSelectPuja} onViewAllPress={() => onNavigateTab('pujas')} />
-          </Block>
-        ) : null}
-
-        {sections.kits ? (
-          <Block order={next()}>
-            <KitRail onViewAll={() => onNavigateTab('store')} />
-          </Block>
-        ) : null}
-
+        {/* Priority 6: Verified Acharya Profile & Consultation (Prominently placed for encouragement) */}
         {sections.pandit ? (
           <Block order={next()}>
             <PanditProfileSection onBookAppointment={onBookAppointment} />
           </Block>
         ) : null}
 
-        {sections.kundli ? (
+        {/* Priority 7: Core Vedic Pujas Catalog */}
+        {sections.popularPujas ? (
           <Block order={next()}>
-            <KundliPromo onPress={() => onNavigateTab('kundli')} />
+            <PopularPujas onSelectPuja={onSelectPuja} onViewAllPress={() => onNavigateTab('pujas')} />
           </Block>
         ) : null}
 
-        {sections.japa ? (
+        {/* Priority 8: Upcoming Vrats & Sacred Fasts Calendar */}
+        <Block order={next()}>
+          <VratFestivalTracker onSelectVratPuja={handleSelectVratPuja} />
+        </Block>
+
+        {/* Priority 9: Sacred Store & Puja Samagri Kits */}
+        {sections.kits ? (
           <Block order={next()}>
-            <MantraJapaWidget onOpenFullMala={() => setJapaModalOpen(true)} />
+            <KitRail onViewAll={() => onNavigateTab('store')} />
           </Block>
         ) : null}
 
-        {/* AUTHENTIC DEVOTEE REVIEWS & LIVE PUJA PROOFS */}
+        {/* Priority 10: Daily Shrimad Bhagavad Geeta Shloka & Wisdom */}
+        <Block order={next()}>
+          <GeetaSuvicharCard />
+        </Block>
+
+        {/* Priority 12: Devotee Testimonials & Verified Experience */}
         <Block order={next()}>
           <DevoteeTestimonials />
         </Block>
 
+        {/* Priority 13: Devotee Support & Inquiries */}
         <Block order={next()}>
           <SupportCard />
         </Block>
-        <View style={styles.footer} />
+
+        {/* Minimal Sacred Brand Signature */}
+        <View style={styles.brandFooter}>
+          <Text style={styles.brandFooterOm}>ॐ</Text>
+          <Text style={styles.brandFooterText}>वेदरीति • VedRit Spiritual Services</Text>
+          <Text style={styles.brandFooterSub}>Managed by Urbexon Software Solutions LLP</Text>
+        </View>
+
+        <View style={styles.footerSpacing} />
       </ScrollView>
 
       {/* Feature 1: Virtual Mandir Modal */}
@@ -286,13 +213,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         onClose={() => setJapaModalOpen(false)}
       />
 
-      {/* Feature 4: Daily Rashifal Modal */}
+      {/* Feature 3: Daily Rashifal Modal */}
       <DailyRashifalModal
         visible={rashifalModalOpen}
         onClose={() => setRashifalModalOpen(false)}
       />
 
-      {/* Feature 5: Aarti & Chalisa Sangrah Modal */}
+      {/* Feature 4: Aarti & Chalisa Sangrah Modal */}
       <AartiSangrahModal
         visible={aartiModalOpen}
         onClose={() => setAartiModalOpen(false)}
@@ -306,83 +233,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingTop: 0, paddingBottom: SPACE.xxl },
-  block: { marginTop: SPACE.xl },
-  footer: { height: 64 },
-  sadhanaStrip: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
-    marginTop: 16,
-  },
-  sadhanaCard: {
-    flex: 1,
-    height: 98,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  sadhanaCardContent: {
-    flex: 1,
-    padding: 12,
-    justifyContent: 'space-between',
-  },
-  sadhanaIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sadhanaIconBadgeOrange: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#EA580C',
+  block: { marginTop: SPACE.lg },
+  footerSpacing: { height: 48 },
+  brandFooter: {
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: SPACE.xl,
+    paddingVertical: 18,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(212, 175, 55, 0.15)',
+    marginHorizontal: SPACE.xl,
   },
-  sadhanaIconBadgeAmber: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#D97706',
-    alignItems: 'center',
-    justifyContent: 'center',
+  brandFooterOm: {
+    fontSize: 24,
+    color: THEME.colors.primarySaffron,
+    opacity: 0.6,
+    marginBottom: 4,
   },
-  streakBadgePill: {
-    backgroundColor: 'rgba(245, 158, 11, 0.25)',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
+  brandFooterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#786B60',
+    letterSpacing: 0.2,
   },
-  streakBadgeText: {
+  brandFooterSub: {
     fontSize: 10,
-    fontWeight: '800',
-    color: '#FDE68A',
-  },
-  malaCountPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  malaCountText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FEF3C7',
-  },
-  sadhanaTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FEF3C7',
-    marginTop: 4,
-  },
-  sadhanaSubtitle: {
-    fontSize: 11,
-    color: '#FDE68A',
-    fontWeight: '500',
+    color: '#A89A8D',
+    marginTop: 2,
   },
 });

@@ -11,6 +11,10 @@ import { User } from '../models/User.js';
 import { Puja } from '../models/Puja.js';
 import { Product } from '../models/Product.js';
 import { SlotHold } from '../models/SlotHold.js';
+import { ChatSession } from '../models/ChatSession.js';
+import { ChatMessage } from '../models/ChatMessage.js';
+import { Coupon } from '../models/Coupon.js';
+import { Announcement } from '../models/Announcement.js';
 import { getSettings } from '../models/Settings.js';
 import { AppError, asyncHandler } from '../middlewares/errorHandler.js';
 import { signAdminToken } from '../services/authService.js';
@@ -52,11 +56,26 @@ const requireObjectId = (id, label) => {
 export const AdminLoginSchema = z.object({ email: z.string().trim().email(), password: z.string().min(1) });
 
 export const adminLogin = asyncHandler(async (req, res) => {
-  const email = req.body.email.toLowerCase();
-  const admin = await Admin.findOne({ email, isActive: true });
-  const ok = admin ? await bcrypt.compare(req.body.password, admin.password) : false;
+  const email = (req.body.email || '').trim().toLowerCase();
+  const password = (req.body.password || '').trim();
+
+  let admin = await Admin.findOne({ email, isActive: true });
+  // Also check if admin exists under the alias email (adminved7084 vs admin7084)
+  if (!admin) {
+    if (email === 'admin7084@gmail.com') {
+      admin = await Admin.findOne({ email: 'adminved7084@gmail.com', isActive: true });
+    } else if (email === 'adminved7084@gmail.com') {
+      admin = await Admin.findOne({ email: 'admin7084@gmail.com', isActive: true });
+    }
+  }
+
+  let ok = false;
+  if (admin) {
+    ok = await bcrypt.compare(password, admin.password);
+  }
+
   if (!admin || !ok) throw new AppError('Invalid admin email or password', 401);
-  res.json({ success: true, data: { token: signAdminToken(email), email, role: admin.role } });
+  res.json({ success: true, data: { token: signAdminToken(admin.email), email: admin.email, role: admin.role } });
 });
 
 export const adminMe = asyncHandler(async (req, res) => {
@@ -66,6 +85,8 @@ export const adminMe = asyncHandler(async (req, res) => {
 export const getStats = asyncHandler(async (req, res) => {
   const today = nowInIst().date;
   const monthStart = new Date(`${today.slice(0, 7)}-01T00:00:00+05:30`);
+  const todayStart = new Date(`${today}T00:00:00+05:30`);
+
   const sumPaid = async (model, field, since) => {
     const match = { paymentStatus: 'PAID' };
     if (since) match.paidAt = { $gte: since };
@@ -81,14 +102,23 @@ export const getStats = asyncHandler(async (req, res) => {
     openKundli,
     totalUsers,
     newUsersThisMonth,
+    activeUsers,
     bookingRevenue,
     orderRevenue,
     kundliRevenue,
     bookingRevenueMonth,
     orderRevenueMonth,
     kundliRevenueMonth,
+    bookingRevenueToday,
+    orderRevenueToday,
+    kundliRevenueToday,
     nextBookings,
+    todaysSchedule,
+    pendingKundlis,
+    recentOrders,
     lowStock,
+    totalPujas,
+    totalProducts,
   ] = await Promise.all([
     Booking.countDocuments({ date: today, status: { $in: ['PENDING', 'CONFIRMED'] } }),
     Booking.countDocuments({ status: 'PENDING' }),
@@ -97,16 +127,31 @@ export const getStats = asyncHandler(async (req, res) => {
     KundliRequest.countDocuments({ status: { $in: ['SUBMITTED', 'IN_REVIEW'] } }),
     User.countDocuments(),
     User.countDocuments({ createdAt: { $gte: monthStart } }),
+    User.countDocuments({ profileCompleted: true, isBlocked: false }),
     sumPaid(Booking, 'amount'),
     sumPaid(Order, 'totalAmount'),
     sumPaid(KundliRequest, 'amount'),
     sumPaid(Booking, 'amount', monthStart),
     sumPaid(Order, 'totalAmount', monthStart),
     sumPaid(KundliRequest, 'amount', monthStart),
+    sumPaid(Booking, 'amount', todayStart),
+    sumPaid(Order, 'totalAmount', todayStart),
+    sumPaid(KundliRequest, 'amount', todayStart),
     Booking.find({ date: { $gte: today }, status: { $in: ['PENDING', 'CONFIRMED'] } })
       .sort({ date: 1, startTime: 1 })
-      .limit(8),
-    Product.find({ isActive: true, stockQuantity: { $lte: 5 } }).select('name stockQuantity').limit(10),
+      .limit(6),
+    Booking.find({ date: today, status: { $ne: 'CANCELLED' } })
+      .sort({ startTime: 1 })
+      .limit(10),
+    KundliRequest.find({ status: { $in: ['SUBMITTED', 'IN_REVIEW'] } })
+      .sort({ createdAt: -1 })
+      .limit(5),
+    Order.find({ status: { $in: ['PLACED', 'CONFIRMED'] } })
+      .sort({ createdAt: -1 })
+      .limit(5),
+    Product.find({ isActive: true, stockQuantity: { $lte: 5 } }).select('name stockQuantity price').limit(10),
+    Puja.countDocuments({ isActive: true }),
+    Product.countDocuments({ isActive: true }),
   ]);
 
   res.json({
@@ -120,14 +165,27 @@ export const getStats = asyncHandler(async (req, res) => {
       openKundli,
       totalUsers,
       newUsersThisMonth,
+      activeUsers,
+      totalPujas,
+      totalProducts,
       revenue: {
         total: bookingRevenue + orderRevenue + kundliRevenue,
         month: bookingRevenueMonth + orderRevenueMonth + kundliRevenueMonth,
+        today: bookingRevenueToday + orderRevenueToday + kundliRevenueToday,
         bookings: bookingRevenue,
         orders: orderRevenue,
         kundli: kundliRevenue,
+        bookingsMonth: bookingRevenueMonth,
+        ordersMonth: orderRevenueMonth,
+        kundliMonth: kundliRevenueMonth,
+        bookingsToday: bookingRevenueToday,
+        ordersToday: orderRevenueToday,
+        kundliToday: kundliRevenueToday,
       },
       nextBookings: nextBookings.map(serializeBooking),
+      todaysSchedule: todaysSchedule.map(serializeBooking),
+      pendingKundlis: pendingKundlis.map(serializeKundli),
+      recentOrders: recentOrders.map(serializeOrder),
       lowStock,
     },
   });
@@ -294,6 +352,17 @@ export const UpdateKundliSchema = z.object({
   status: z.enum(KUNDLI_STATUS).optional(),
   paymentStatus: z.enum(PAYMENT_STATUS).optional(),
   panditResponse: z.string().trim().max(10000).optional(),
+  reportUrl: z.string().trim().optional(),
+  reportName: z.string().trim().optional(),
+  attachments: z
+    .array(
+      z.object({
+        url: z.string().trim(),
+        name: z.string().trim().optional(),
+        contentType: z.string().trim().optional(),
+      })
+    )
+    .optional(),
 });
 
 export const updateKundli = asyncHandler(async (req, res) => {
@@ -316,23 +385,87 @@ export const listUsers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = paginate(req.query);
   const filter = {};
   const regex = searchRegex(req.query.search);
-  if (regex) filter.$or = [{ name: regex }, { phone: regex }, { email: regex }, { city: regex }];
-  const [users, total] = await Promise.all([
-    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+  if (regex) {
+    filter.$or = [
+      { name: regex },
+      { phone: regex },
+      { email: regex },
+      { city: regex },
+      { state: regex },
+      { gotra: regex },
+      { rashi: regex },
+      { pinCode: regex },
+    ];
+  }
+
+  const status = (req.query.status || '').toLowerCase();
+  if (status === 'blocked') filter.isBlocked = true;
+  else if (status === 'active') {
+    filter.isBlocked = false;
+    filter.profileCompleted = true;
+  } else if (status === 'incomplete') {
+    filter.isBlocked = false;
+    filter.profileCompleted = false;
+  }
+
+  let sortOption = { createdAt: -1 };
+  const sortParam = (req.query.sort || '').toLowerCase();
+  if (sortParam === 'oldest') sortOption = { createdAt: 1 };
+  else if (sortParam === 'name_asc') sortOption = { name: 1 };
+  else if (sortParam === 'name_desc') sortOption = { name: -1 };
+  else if (sortParam === 'recent_login') sortOption = { lastLoginAt: -1 };
+
+  const [users, total, totalAll, totalActive, totalIncomplete, totalBlocked] = await Promise.all([
+    User.find(filter).sort(sortOption).skip(skip).limit(limit),
     User.countDocuments(filter),
+    User.countDocuments({}),
+    User.countDocuments({ profileCompleted: true, isBlocked: false }),
+    User.countDocuments({ profileCompleted: false, isBlocked: false }),
+    User.countDocuments({ isBlocked: true }),
   ]);
+
   const ids = users.map((u) => u._id);
-  const counts = await Booking.aggregate([{ $match: { user: { $in: ids } } }, { $group: { _id: '$user', count: { $sum: 1 } } }]);
-  const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
+
+  const [bookingCounts, orderCounts, kundliCounts, bookingSpent, orderSpent, kundliSpent] = await Promise.all([
+    Booking.aggregate([{ $match: { user: { $in: ids } } }, { $group: { _id: '$user', count: { $sum: 1 } } }]),
+    Order.aggregate([{ $match: { user: { $in: ids } } }, { $group: { _id: '$user', count: { $sum: 1 } } }]),
+    KundliRequest.aggregate([{ $match: { user: { $in: ids } } }, { $group: { _id: '$user', count: { $sum: 1 } } }]),
+    Booking.aggregate([{ $match: { user: { $in: ids }, paymentStatus: 'PAID' } }, { $group: { _id: '$user', total: { $sum: '$amount' } } }]),
+    Order.aggregate([{ $match: { user: { $in: ids }, paymentStatus: 'PAID' } }, { $group: { _id: '$user', total: { $sum: '$totalAmount' } } }]),
+    KundliRequest.aggregate([{ $match: { user: { $in: ids }, paymentStatus: 'PAID' } }, { $group: { _id: '$user', total: { $sum: '$amount' } } }]),
+  ]);
+
+  const bookingCountMap = new Map(bookingCounts.map((c) => [c._id.toString(), c.count]));
+  const orderCountMap = new Map(orderCounts.map((c) => [c._id.toString(), c.count]));
+  const kundliCountMap = new Map(kundliCounts.map((c) => [c._id.toString(), c.count]));
+
+  const spentMap = new Map();
+  bookingSpent.forEach((b) => spentMap.set(b._id.toString(), (spentMap.get(b._id.toString()) || 0) + b.total));
+  orderSpent.forEach((o) => spentMap.set(o._id.toString(), (spentMap.get(o._id.toString()) || 0) + o.total));
+  kundliSpent.forEach((k) => spentMap.set(k._id.toString(), (spentMap.get(k._id.toString()) || 0) + k.total));
+
   res.json({
     success: true,
     data: {
-      items: users.map((u) => ({
-        ...u.toPublic(),
-        isBlocked: u.isBlocked,
-        lastLoginAt: u.lastLoginAt,
-        bookingsCount: countMap.get(u._id.toString()) || 0,
-      })),
+      items: users.map((u) => {
+        const idStr = u._id.toString();
+        return {
+          ...u.toPublic(),
+          isBlocked: u.isBlocked,
+          lastLoginAt: u.lastLoginAt,
+          bookingsCount: bookingCountMap.get(idStr) || 0,
+          ordersCount: orderCountMap.get(idStr) || 0,
+          kundliCount: kundliCountMap.get(idStr) || 0,
+          totalSpent: spentMap.get(idStr) || 0,
+          familyCount: u.familyMembers?.length || 0,
+        };
+      }),
+      summary: {
+        total: totalAll,
+        active: totalActive,
+        incomplete: totalIncomplete,
+        blocked: totalBlocked,
+      },
       total,
       page,
       limit,
@@ -345,14 +478,36 @@ export const getUserDetail = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) throw new AppError('User not found', 404);
   const [bookings, orders, kundli] = await Promise.all([
-    Booking.find({ user: user._id }).sort({ createdAt: -1 }).limit(50),
-    Order.find({ user: user._id }).sort({ createdAt: -1 }).limit(50),
-    KundliRequest.find({ user: user._id }).sort({ createdAt: -1 }).limit(50),
+    Booking.find({ user: user._id }).sort({ createdAt: -1 }).limit(100),
+    Order.find({ user: user._id }).sort({ createdAt: -1 }).limit(100),
+    KundliRequest.find({ user: user._id }).sort({ createdAt: -1 }).limit(100),
   ]);
+
+  const totalSpent =
+    bookings.filter((b) => b.paymentStatus === 'PAID').reduce((sum, b) => sum + (b.amount || 0), 0) +
+    orders.filter((o) => o.paymentStatus === 'PAID').reduce((sum, o) => sum + (o.totalAmount || 0), 0) +
+    kundli.filter((k) => k.paymentStatus === 'PAID').reduce((sum, k) => sum + (k.amount || 0), 0);
+
+  const completedBookings = bookings.filter((b) => b.status === 'COMPLETED').length;
+  const activeBookings = bookings.filter((b) => ['PENDING', 'CONFIRMED'].includes(b.status)).length;
+
   res.json({
     success: true,
     data: {
-      user: { ...user.toPublic(), isBlocked: user.isBlocked, lastLoginAt: user.lastLoginAt },
+      user: {
+        ...user.toPublic(),
+        isBlocked: user.isBlocked,
+        lastLoginAt: user.lastLoginAt,
+      },
+      stats: {
+        totalSpent,
+        bookingsCount: bookings.length,
+        completedBookings,
+        activeBookings,
+        ordersCount: orders.length,
+        kundliCount: kundli.length,
+        familyCount: user.familyMembers?.length || 0,
+      },
       bookings: bookings.map(serializeBooking),
       orders: orders.map(serializeOrder),
       kundli: kundli.map(serializeKundli),
@@ -606,3 +761,256 @@ export const deleteBlock = asyncHandler(async (req, res) => {
   }
   res.json({ success: true });
 });
+
+// ==========================================
+// VEDIC AI INQUIRIES & CHAT SESSIONS
+// ==========================================
+export const listChatSessions = asyncHandler(async (req, res) => {
+  const { page, limit, skip } = paginate(req.query);
+  const filter = {};
+  if (req.query.category && req.query.category !== 'ALL') {
+    filter.category = req.query.category;
+  }
+  const regex = searchRegex(req.query.search);
+  if (regex) {
+    filter.$or = [
+      { userPhone: regex },
+      { title: regex },
+      { 'devoteeContext.name': regex },
+      { 'devoteeContext.gotra': regex },
+      { 'devoteeContext.rashi': regex },
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    ChatSession.find(filter).sort({ lastInteractionAt: -1 }).skip(skip).limit(limit),
+    ChatSession.countDocuments(filter),
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      items: items.map((s) => ({
+        id: s._id.toString(),
+        sessionId: s.sessionId,
+        userPhone: s.userPhone || '',
+        title: s.title,
+        category: s.category,
+        devoteeContext: s.devoteeContext || {},
+        messageCount: s.messageCount,
+        lastInteractionAt: s.lastInteractionAt,
+        createdAt: s.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    },
+  });
+});
+
+export const getChatSessionDetail = asyncHandler(async (req, res) => {
+  const { sessionId } = req.params;
+  const session = await ChatSession.findOne({ sessionId });
+  if (!session) throw new AppError('Chat session not found', 404);
+
+  const messages = await ChatMessage.find({ sessionId }).sort({ createdAt: 1 });
+
+  res.json({
+    success: true,
+    data: {
+      session: {
+        id: session._id.toString(),
+        sessionId: session.sessionId,
+        userPhone: session.userPhone || '',
+        title: session.title,
+        category: session.category,
+        devoteeContext: session.devoteeContext || {},
+        messageCount: session.messageCount,
+        lastInteractionAt: session.lastInteractionAt,
+      },
+      messages: messages.map((m) => ({
+        id: m._id.toString(),
+        sender: m.sender,
+        text: m.text,
+        sanskritVerse: m.sanskritVerse || '',
+        shastraReference: m.shastraReference || '',
+        remedy: m.remedy || '',
+        action: m.action || null,
+        followUps: m.followUps || [],
+        createdAt: m.createdAt,
+      })),
+    },
+  });
+});
+
+// ==========================================
+// ADMIN STAFF & SUB-ADMINS
+// ==========================================
+export const StaffInputSchema = z.object({
+  name: z.string().trim().max(80).default(''),
+  email: z.string().trim().email(),
+  phone: z.string().trim().max(20).default(''),
+  password: z.string().min(6).optional(),
+  role: z.enum(['super_admin', 'admin', 'astrologer', 'store_manager']).default('admin'),
+  isActive: z.boolean().default(true),
+});
+
+export const listStaff = asyncHandler(async (req, res) => {
+  const staff = await Admin.find().select('-password').sort({ createdAt: -1 });
+  res.json({ success: true, data: staff });
+});
+
+export const createStaff = asyncHandler(async (req, res) => {
+  const { name, email, phone, password, role, isActive } = req.body;
+  const cleanEmail = email.toLowerCase().trim();
+  const existing = await Admin.findOne({ email: cleanEmail });
+  if (existing) throw new AppError('An admin account with this email already exists', 409);
+  if (!password || password.length < 6) throw new AppError('Password must be at least 6 characters', 400);
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const created = await Admin.create({
+    name,
+    email: cleanEmail,
+    phone,
+    password: hashedPassword,
+    role,
+    isActive,
+  });
+
+  res.status(201).json({
+    success: true,
+    data: {
+      id: created._id.toString(),
+      name: created.name,
+      email: created.email,
+      phone: created.phone,
+      role: created.role,
+      isActive: created.isActive,
+      createdAt: created.createdAt,
+    },
+  });
+});
+
+export const updateStaff = asyncHandler(async (req, res) => {
+  requireObjectId(req.params.id, 'Staff');
+  const staff = await Admin.findById(req.params.id);
+  if (!staff) throw new AppError('Staff member not found', 404);
+
+  const { name, phone, role, isActive, password } = req.body;
+  if (name !== undefined) staff.name = name;
+  if (phone !== undefined) staff.phone = phone;
+  if (role !== undefined) staff.role = role;
+  if (isActive !== undefined) staff.isActive = isActive;
+  if (password && password.length >= 6) {
+    staff.password = await bcrypt.hash(password, 10);
+  }
+
+  await staff.save();
+  res.json({
+    success: true,
+    data: {
+      id: staff._id.toString(),
+      name: staff.name,
+      email: staff.email,
+      phone: staff.phone,
+      role: staff.role,
+      isActive: staff.isActive,
+    },
+  });
+});
+
+export const deleteStaff = asyncHandler(async (req, res) => {
+  requireObjectId(req.params.id, 'Staff');
+  const staff = await Admin.findById(req.params.id);
+  if (!staff) throw new AppError('Staff member not found', 404);
+  if (staff.email === req.adminEmail) {
+    throw new AppError('You cannot delete your own admin account', 400);
+  }
+  await Admin.deleteOne({ _id: staff._id });
+  res.json({ success: true, message: 'Staff member removed' });
+});
+
+// ==========================================
+// COUPONS & FESTIVAL DISCOUNTS
+// ==========================================
+export const CouponSchema = z.object({
+  code: z.string().trim().min(2).max(20).toUpperCase(),
+  title: z.string().trim().min(2).max(100),
+  description: z.string().trim().max(300).default(''),
+  discountType: z.enum(['PERCENTAGE', 'FLAT']).default('FLAT'),
+  discountValue: z.number().min(1),
+  minOrderValue: z.number().min(0).default(0),
+  maxDiscount: z.number().min(0).default(0),
+  applicableTo: z.enum(['ALL', 'PUJA', 'STORE', 'KUNDLI']).default('ALL'),
+  validFrom: z.string().default(''),
+  validTill: z.string().default(''),
+  usageLimit: z.number().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const listCoupons = asyncHandler(async (req, res) => {
+  const coupons = await Coupon.find().sort({ createdAt: -1 });
+  res.json({ success: true, data: coupons });
+});
+
+export const createCoupon = asyncHandler(async (req, res) => {
+  const code = req.body.code.toUpperCase().trim();
+  const existing = await Coupon.findOne({ code });
+  if (existing) throw new AppError(`Coupon code "${code}" already exists`, 409);
+
+  const coupon = await Coupon.create({ ...req.body, code });
+  res.status(201).json({ success: true, data: coupon });
+});
+
+export const updateCoupon = asyncHandler(async (req, res) => {
+  requireObjectId(req.params.id, 'Coupon');
+  const coupon = await Coupon.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  if (!coupon) throw new AppError('Coupon not found', 404);
+  res.json({ success: true, data: coupon });
+});
+
+export const deleteCoupon = asyncHandler(async (req, res) => {
+  requireObjectId(req.params.id, 'Coupon');
+  await Coupon.findByIdAndDelete(req.params.id);
+  res.json({ success: true, message: 'Coupon deleted' });
+});
+
+// ==========================================
+// ANNOUNCEMENTS & FESTIVAL BROADCASTS
+// ==========================================
+export const AnnouncementSchema = z.object({
+  title: z.string().trim().min(2).max(120),
+  message: z.string().trim().min(5).max(1000),
+  category: z.enum(['FESTIVAL', 'PUJA_ALERT', 'MUHURAT', 'TEMPLE_NOTICE']).default('FESTIVAL'),
+  priority: z.enum(['NORMAL', 'HIGH', 'URGENT']).default('NORMAL'),
+  actionType: z.enum(['PUJAS', 'STORE', 'KUNDLI', 'NONE']).default('NONE'),
+  actionRef: z.string().default(''),
+  actionLabel: z.string().default('View Details'),
+  startsOn: z.string().default(''),
+  endsOn: z.string().default(''),
+  isActive: z.boolean().default(true),
+});
+
+export const listAnnouncements = asyncHandler(async (req, res) => {
+  const list = await Announcement.find().sort({ createdAt: -1 });
+  res.json({ success: true, data: list });
+});
+
+export const createAnnouncement = asyncHandler(async (req, res) => {
+  const announcement = await Announcement.create(req.body);
+  res.status(201).json({ success: true, data: announcement });
+});
+
+export const updateAnnouncement = asyncHandler(async (req, res) => {
+  requireObjectId(req.params.id, 'Announcement');
+  const announcement = await Announcement.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  if (!announcement) throw new AppError('Announcement not found', 404);
+  res.json({ success: true, data: announcement });
+});
+
+export const deleteAnnouncement = asyncHandler(async (req, res) => {
+  requireObjectId(req.params.id, 'Announcement');
+  await Announcement.findByIdAndDelete(req.params.id);
+  res.json({ success: true, message: 'Announcement deleted' });
+});
+

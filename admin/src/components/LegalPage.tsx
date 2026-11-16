@@ -18,6 +18,13 @@ export function LegalPage({ title, updated, children }: LegalPageProps) {
         <div className="mt-8 space-y-6 leading-relaxed text-[var(--text-secondary)] [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-[var(--text-primary)] [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_a]:text-[var(--saffron)] [&_a]:underline">
           {children}
         </div>
+
+        <footer className="mt-16 border-t border-[var(--border-color)] pt-6 text-center text-xs text-[var(--text-muted)]">
+          <p>© 2026 VedRit. All rights reserved.</p>
+          <p className="mt-1 text-[11px] font-medium text-[var(--text-muted)]">
+            Managed by Urbexon Software Solutions LLP
+          </p>
+        </footer>
       </article>
     </main>
   );

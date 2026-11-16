@@ -7,16 +7,16 @@ import { detectImageType, mediaUrl } from '../utils/media.js';
 import { AppError, asyncHandler } from '../middlewares/errorHandler.js';
 import { DATE_REGEX, nowInIst } from '../utils/time.js';
 
-const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const MAX_MEDIA_BYTES = 10 * 1024 * 1024;
 
 export const uploadMedia = asyncHandler(async (req, res) => {
   const body = req.body;
-  if (!Buffer.isBuffer(body) || !body.length) throw new AppError('Send the image file as the request body (JPEG, PNG or WebP)', 400);
-  if (body.length > MAX_IMAGE_BYTES) throw new AppError('Image is too large. Maximum size is 3 MB.', 413);
+  if (!Buffer.isBuffer(body) || !body.length) throw new AppError('Send the media file as the request body (JPEG, PNG, WebP or PDF)', 400);
+  if (body.length > MAX_MEDIA_BYTES) throw new AppError('File is too large. Maximum size is 10 MB.', 413);
   const contentType = detectImageType(body);
-  if (!contentType) throw new AppError('Only JPEG, PNG or WebP images are allowed', 415);
+  if (!contentType) throw new AppError('Only JPEG, PNG, WebP images or PDF documents are allowed', 415);
   const media = await Media.create({ data: body, contentType, size: body.length });
-  res.status(201).json({ success: true, data: { id: media._id.toString(), url: mediaUrl(media._id) } });
+  res.status(201).json({ success: true, data: { id: media._id.toString(), url: mediaUrl(media._id), contentType } });
 });
 
 export const serveMedia = asyncHandler(async (req, res) => {

@@ -15,10 +15,15 @@ import { VedicChatScreen } from './src/screens/VedicChatScreen';
 import { SplashScreen } from './src/screens/SplashScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileSetupScreen } from './src/screens/ProfileSetupScreen';
+import { ProfileOnboardingScreen } from './src/screens/ProfileOnboardingScreen';
+import * as SecureStore from 'expo-secure-store';
+import { onProfileRequired } from './src/services/api';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AppDataProvider, useAppData } from './src/context/AppDataContext';
 import { CartProvider, useCart } from './src/context/CartContext';
+import { LanguageProvider } from './src/context/LanguageContext';
+import { InboxProvider } from './src/context/InboxContext';
 import { BookingModal, BookingRequest } from './src/components/booking/BookingModal';
 import { CartModal } from './src/components/store/CartModal';
 import { SupportModal } from './src/components/modals/SupportModal';
@@ -167,6 +172,32 @@ function OfflineScreen() {
 function Root() {
   const { status, user } = useAuth();
   const [minSplashDone, setMinSplashDone] = useState(false);
+  const [skipped, setSkipped] = useState<boolean | null>(null);
+  const userId = user?.id;
+  const skipKey = userId ? `vedrit.profile.skip.${userId}` : null;
+
+  useEffect(() => {
+    if (!skipKey) {
+      setSkipped(null);
+      return;
+    }
+    SecureStore.getItemAsync(skipKey)
+      .then((v) => setSkipped(v === '1'))
+      .catch(() => setSkipped(false));
+  }, [skipKey]);
+
+  useEffect(() => {
+    onProfileRequired(() => {
+      setSkipped(false);
+      if (skipKey) SecureStore.deleteItemAsync(skipKey).catch(() => undefined);
+    });
+    return () => onProfileRequired(null);
+  }, [skipKey]);
+
+  const skipProfile = () => {
+    setSkipped(true);
+    if (skipKey) SecureStore.setItemAsync(skipKey, '1').catch(() => undefined);
+  };
 
   useEffect(() => {
     ExpoSplashScreen.hideAsync().catch(() => {});
@@ -177,8 +208,13 @@ function Root() {
   if (status === 'loading' || !minSplashDone) return <SplashScreen />;
   if (status === 'offline') return <OfflineScreen />;
   if (status === 'signedOut' || !user) return <LoginScreen />;
-  if (!user.profileCompleted) return <ProfileSetupScreen mode="setup" />;
-  return <MainApp />;
+  if (!user.profileCompleted && skipped === null) return <SplashScreen />;
+  if (!user.profileCompleted && skipped !== true) return <ProfileOnboardingScreen onSkip={skipProfile} />;
+  return (
+    <InboxProvider>
+      <MainApp />
+    </InboxProvider>
+  );
 }
 
 export default function App() {
@@ -187,7 +223,9 @@ export default function App() {
       <AuthProvider>
         <AppDataProvider>
           <CartProvider>
-            <Root />
+            <LanguageProvider>
+              <Root />
+            </LanguageProvider>
           </CartProvider>
         </AppDataProvider>
       </AuthProvider>

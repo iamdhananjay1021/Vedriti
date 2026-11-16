@@ -96,32 +96,58 @@ export function HomeTab() {
   const setPanchang = (patch: Partial<HomeSettings['panchang']>) => update({ ...current, panchang: { ...pg, ...patch } });
 
   return (
-    <div className="space-y-4 pb-20">
-      <Card>
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <h2 className="font-bold">Home banners</h2>
-            <p className="text-sm text-[var(--text-muted)]">Shown as a sliding carousel at the top of the app. Lowest order number comes first.</p>
+    <div className="space-y-6 pb-28">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--saffron)] to-amber-600 text-xl font-bold text-white shadow-md">
+              ॐ
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-heading font-black tracking-tight text-[var(--text-primary)]">
+              Home Screen & Banners Management
+            </h1>
           </div>
-          <Button onClick={() => setEditing(emptyBanner())}>
-            <Plus className="h-4 w-4" /> Add banner
-          </Button>
+          <p className="mt-1 text-xs sm:text-sm font-medium text-[var(--text-secondary)]">
+            Manage mobile app sliding hero banners, announcement flashes, live panchang data, and section visibility.
+          </p>
+        </div>
+
+        <Button
+          onClick={() => setEditing(emptyBanner())}
+          className="text-xs font-bold py-2.5 px-4 shadow-sm self-start sm:self-auto"
+        >
+          <Plus className="h-4 w-4 mr-1.5" /> Add New Banner
+        </Button>
+      </div>
+
+      <Card className="space-y-4 p-5 sm:p-6 shadow-sm">
+        <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3.5">
+          <div>
+            <h2 className="font-heading font-bold text-lg text-[var(--text-primary)]">Hero Sliding Banners</h2>
+            <p className="text-xs font-medium text-[var(--text-secondary)]">
+              Displayed as an interactive carousel at the top of the mobile home screen.
+            </p>
+          </div>
+          <span className="rounded-full bg-[var(--saffron)]/15 px-3 py-1 text-xs font-bold text-[var(--saffron)]">
+            {data.banners.length} Active Banners
+          </span>
         </div>
         {data.banners.length ? (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
             {data.banners.map((b) => (
-              <div key={b.id} className="overflow-hidden rounded-xl border border-[var(--border-color)]">
-                <div className="relative aspect-[16/7] bg-gradient-to-br from-[var(--saffron)] to-[#7a2410]">
+              <div key={b.id} className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-surface)] shadow-xs transition hover:shadow-md hover:border-[var(--saffron)]">
+                <div className="relative aspect-[16/8] bg-gradient-to-br from-[var(--saffron)] to-[#7a2410]">
                   {b.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={b.imageUrl} alt="" className="h-full w-full object-cover" />
                   ) : null}
-                  <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/60 to-transparent p-3 text-white">
-                    <p className="font-bold">{b.title}</p>
-                    {b.subtitle ? <p className="text-xs opacity-90">{b.subtitle}</p> : null}
+                  <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 text-white">
+                    <p className="font-heading font-bold text-base leading-snug">{b.title}</p>
+                    {b.subtitle ? <p className="mt-0.5 text-xs opacity-90 font-medium line-clamp-1">{b.subtitle}</p> : null}
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-2 p-3">
+                <div className="flex items-center justify-between gap-2 p-3.5">
                   <div className="flex flex-wrap gap-1.5">
                     <Badge tone={b.isActive ? 'green' : 'gray'}>{b.isActive ? 'Live' : 'Hidden'}</Badge>
                     <Badge>Order {b.sortOrder}</Badge>
@@ -131,58 +157,80 @@ export function HomeTab() {
                       </Badge>
                     ) : null}
                   </div>
-                  <div className="flex shrink-0">
-                    <button className="rounded p-1.5 hover:bg-[var(--bg-hover)]" onClick={() => toggleBanner(b)} aria-label={b.isActive ? 'Hide' : 'Show'}>
+                  <div className="flex shrink-0 gap-1">
+                    <button className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]" onClick={() => toggleBanner(b)} aria-label={b.isActive ? 'Hide' : 'Show'}>
                       {b.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
-                    <button className="rounded p-1.5 hover:bg-[var(--bg-hover)]" onClick={() => setEditing(b)} aria-label="Edit">
+                    <button className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]" onClick={() => setEditing(b)} aria-label="Edit">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button className="rounded p-1.5 hover:bg-[var(--bg-hover)]" onClick={() => removeBanner(b)} aria-label="Delete">
+                    <button className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-red-500/10 hover:text-red-600" onClick={() => removeBanner(b)} aria-label="Delete">
                       <Trash2 className="h-4 w-4 text-[var(--red)]" />
                     </button>
                   </div>
                 </div>
               </div>
             ))}
+
+            {/* Quick Add Banner Card */}
+            <button
+              onClick={() => setEditing(emptyBanner())}
+              className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border-color)] p-6 text-center transition hover:border-[var(--saffron)] hover:bg-[var(--bg-hover)]/40"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--saffron-light)] text-[var(--saffron)] shadow-xs">
+                <Plus className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm font-heading font-black text-[var(--text-primary)]">
+                + Add Another Banner
+              </p>
+              <p className="mt-1 text-xs text-[var(--text-muted)] max-w-xs">
+                Upload 16:9 banner to highlight festivals, vrat rituals, or special offers in mobile app.
+              </p>
+            </button>
           </div>
         ) : (
           <Empty title="No banners yet" subtitle="The app shows a default welcome banner until you add one." />
         )}
       </Card>
 
-      <Card>
-        <h2 className="mb-3 font-bold">Announcement strip</h2>
-        <Toggle
-          checked={current.announcement.enabled}
-          onChange={(enabled) => update({ ...current, announcement: { ...current.announcement, enabled } })}
-          label="Show announcement on home"
-        />
+      <Card className="space-y-3.5 p-5 sm:p-6 shadow-sm">
+        <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+          <div>
+            <h2 className="font-heading font-bold text-lg text-[var(--text-primary)]">Flash Announcement Strip</h2>
+            <p className="text-xs font-medium text-[var(--text-secondary)]">Marquee or highlight banner on top of the home screen</p>
+          </div>
+          <Toggle
+            checked={current.announcement.enabled}
+            onChange={(enabled) => update({ ...current, announcement: { ...current.announcement, enabled } })}
+            label="Active"
+          />
+        </div>
         <Input
-          className="mt-3"
-          label="Message"
+          className="mt-2"
+          label="Announcement Message"
           hint="(max 160 characters)"
           maxLength={160}
           value={current.announcement.text}
           onChange={(e) => update({ ...current, announcement: { ...current.announcement, text: e.target.value } })}
-          placeholder="e.g. Pandit Ji will be unavailable on 5 Nov"
+          placeholder="e.g. Pandit Ji will be available at Tadiya Hanuman Mandir on Shivratri for special Sankalp."
         />
       </Card>
 
-      <Card>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <Card className="space-y-4 p-5 sm:p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-color)] pb-3">
           <div>
-            <h2 className="font-bold">Today&apos;s panchang</h2>
-            <p className="text-sm text-[var(--text-muted)]">
-              Shown in the app only on the date you set. {pg.date && pg.date !== today ? 'The saved date is not today, so it is hidden right now.' : ''}
+            <h2 className="font-heading font-bold text-lg text-[var(--text-primary)]">Live Vedic Panchang Override</h2>
+            <p className="text-xs font-medium text-[var(--text-secondary)]">
+              Manual Panchang data shown in app on the specified date. {pg.date && pg.date !== today ? 'Current saved date is not today.' : ''}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setPanchang({ date: today })}>
-              Set date to today
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="text-xs py-1.5 px-3 font-bold" onClick={() => setPanchang({ date: today })}>
+              Set to Today
             </Button>
             <Button
               variant="ghost"
+              className="text-xs py-1.5 px-3 font-bold text-red-600 hover:bg-red-500/10"
               onClick={() => update({ ...current, panchang: { date: '', paksha: '', tithi: '', nakshatra: '', yoga: '', abhijitMuhurat: '', rahuKaal: '', sunrise: '', sunset: '', note: '' } })}
             >
               Clear
@@ -195,32 +243,39 @@ export function HomeTab() {
           <Input label="Paksha" value={pg.paksha} onChange={(e) => setPanchang({ paksha: e.target.value })} placeholder="Shukla Paksha" />
           <Input label="Nakshatra" value={pg.nakshatra} onChange={(e) => setPanchang({ nakshatra: e.target.value })} />
           <Input label="Yoga" value={pg.yoga} onChange={(e) => setPanchang({ yoga: e.target.value })} />
-          <Input label="Abhijit muhurat" value={pg.abhijitMuhurat} onChange={(e) => setPanchang({ abhijitMuhurat: e.target.value })} placeholder="11:45 AM - 12:35 PM" />
-          <Input label="Rahu kaal" value={pg.rahuKaal} onChange={(e) => setPanchang({ rahuKaal: e.target.value })} />
+          <Input label="Abhijit Muhurat" value={pg.abhijitMuhurat} onChange={(e) => setPanchang({ abhijitMuhurat: e.target.value })} placeholder="11:45 AM - 12:35 PM" />
+          <Input label="Rahu Kaal" value={pg.rahuKaal} onChange={(e) => setPanchang({ rahuKaal: e.target.value })} />
           <Input label="Sunrise" value={pg.sunrise} onChange={(e) => setPanchang({ sunrise: e.target.value })} placeholder="06:21 AM" />
           <Input label="Sunset" value={pg.sunset} onChange={(e) => setPanchang({ sunset: e.target.value })} placeholder="05:54 PM" />
-          <Textarea className="sm:col-span-3" label="Note" maxLength={200} value={pg.note} onChange={(e) => setPanchang({ note: e.target.value })} />
+          <Textarea className="sm:col-span-3" label="Auspicious Note / Blessing" maxLength={200} value={pg.note} onChange={(e) => setPanchang({ note: e.target.value })} />
         </div>
       </Card>
 
-      <Card>
-        <h2 className="mb-3 font-bold">Sections on home screen</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
+      <Card className="space-y-4 p-5 sm:p-6 shadow-sm">
+        <h2 className="font-heading font-bold text-lg text-[var(--text-primary)] border-b border-[var(--border-color)] pb-3">
+          Mobile App Home Sections Visibility
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-3">
           {SECTION_LABELS.map(({ key, label }) => (
-            <Toggle
-              key={key}
-              checked={current.sections[key]}
-              onChange={(v) => update({ ...current, sections: { ...current.sections, [key]: v } })}
-              label={label}
-            />
+            <div key={key} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-3 shadow-2xs">
+              <Toggle
+                checked={current.sections[key]}
+                onChange={(v) => update({ ...current, sections: { ...current.sections, [key]: v } })}
+                label={label}
+              />
+            </div>
           ))}
         </div>
       </Card>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--border-color)] bg-[var(--bg-surface)] p-3 md:left-64">
-        <div className="mx-auto flex max-w-7xl justify-end">
-          <Button loading={saving} onClick={saveHome}>
-            Save announcement, panchang & sections
+      {/* Floating Save Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--border-color)] bg-[var(--bg-surface)]/95 backdrop-blur-md p-3.5 md:left-64 shadow-lg">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-5 sm:px-8 lg:px-10">
+          <span className="hidden sm:inline text-xs font-semibold text-[var(--text-secondary)]">
+            Configure sections, announcements and live panchang across mobile devices.
+          </span>
+          <Button loading={saving} onClick={saveHome} className="text-xs font-bold py-2.5 px-6 shadow-sm ml-auto">
+            Save Home Configuration
           </Button>
         </div>
       </div>

@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Home, Landmark, ShoppingBag, Sparkles, User, Flame } from 'lucide-react-native';
+import { Home, Landmark, ShoppingBag, Sparkles, User } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 
 export type TabId = 'home' | 'pujas' | 'store' | 'kundli' | 'account' | 'chat';
 
@@ -17,13 +17,14 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
   onTabChange,
 }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
 
   const tabs: { id: TabId; label: string; icon: any }[] = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'pujas', label: 'Pujas', icon: Landmark },
-    { id: 'store', label: 'Store', icon: ShoppingBag },
-    { id: 'kundli', label: 'Kundali', icon: Sparkles },
-    { id: 'account', label: 'Account', icon: User },
+    { id: 'home', label: t.tabHome, icon: Home },
+    { id: 'pujas', label: t.tabPujas, icon: Landmark },
+    { id: 'store', label: t.tabStore, icon: ShoppingBag },
+    { id: 'kundli', label: t.tabKundli, icon: Sparkles },
+    { id: 'account', label: t.tabAccount, icon: User },
   ];
 
   return (

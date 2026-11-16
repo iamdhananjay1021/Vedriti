@@ -305,20 +305,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15.5,
+    fontWeight: '700',
     color: '#2A170F',
   },
   microDakshinaTag: {
-    backgroundColor: '#C65D24',
+    backgroundColor: '#FEF3EB',
     paddingHorizontal: 7,
-    paddingVertical: 2.5,
+    paddingVertical: 2,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#F5DDC7',
   },
   microDakshinaText: {
     fontSize: 10,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    fontWeight: '700',
+    color: '#C65D24',
   },
   subtitle: {
     fontSize: 11,
@@ -331,15 +333,16 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width: width * 0.88,
-    borderRadius: 22,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EFE7DD',
+    borderWidth: 1,
+    borderColor: '#EBE3D8',
     overflow: 'hidden',
-    shadowColor: '#2A170F',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowColor: '#382016',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
   imageBox: {
     width: '100%',
@@ -391,7 +394,7 @@ const styles = StyleSheet.create({
   },
   startingPriceText: {
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
     color: '#1E1B4B',
   },
   imageBottomRow: {
@@ -402,7 +405,7 @@ const styles = StyleSheet.create({
   },
   imageVenueText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#FEF3C7',
     flex: 1,
     textShadowColor: 'rgba(0,0,0,0.8)',
@@ -429,7 +432,7 @@ const styles = StyleSheet.create({
   },
   deityPillText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#C65D24',
   },
   datePill: {
@@ -443,10 +446,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pujaTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#2A170F',
-    lineHeight: 22,
+    lineHeight: 21,
   },
   pujaSub: {
     fontSize: 11.5,
@@ -469,7 +472,7 @@ const styles = StyleSheet.create({
   muhuratText: {
     fontSize: 11,
     color: '#166534',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   progressContainer: {
     marginTop: 12,
@@ -495,7 +498,7 @@ const styles = StyleSheet.create({
     color: '#554A41',
   },
   enrolledBold: {
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#C65D24',
   },
   spotsPill: {
@@ -506,7 +509,7 @@ const styles = StyleSheet.create({
   },
   spotsText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#DC2626',
   },
   progressBarTrack: {
@@ -566,7 +569,7 @@ const styles = StyleSheet.create({
   },
   tierPreviewPrice: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#C65D24',
     marginTop: 1,
   },
@@ -582,7 +585,7 @@ const styles = StyleSheet.create({
   },
   bookCtaText: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });

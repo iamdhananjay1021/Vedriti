@@ -34,6 +34,18 @@ const KundliRequestSchema = new Schema(
     paidAt: { type: Date },
     status: { type: String, enum: KUNDLI_STATUS, default: 'SUBMITTED', index: true },
     panditResponse: { type: String, trim: true, default: '' },
+    reportUrl: { type: String, trim: true, default: '' },
+    reportName: { type: String, trim: true, default: '' },
+    attachments: {
+      type: [
+        {
+          url: { type: String, required: true },
+          name: { type: String, default: '' },
+          contentType: { type: String, default: '' },
+        },
+      ],
+      default: [],
+    },
     respondedAt: { type: Date },
   },
   { timestamps: true }

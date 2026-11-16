@@ -18,7 +18,7 @@ export const PanditProfileSection: React.FC<Props> = ({ onBookAppointment }) => 
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={THEME.gradients.divineSanctum} style={styles.card}>
+      <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.avatar}>
             <Text style={styles.om}>ॐ</Text>
@@ -28,8 +28,8 @@ export const PanditProfileSection: React.FC<Props> = ({ onBookAppointment }) => 
             {settings.panditTitle ? <Text style={styles.title}>{settings.panditTitle}</Text> : null}
             {settings.experienceYears ? (
               <View style={styles.badge}>
-                <Award size={12} color={THEME.colors.gold} />
-                <Text style={styles.badgeText}>{settings.experienceYears}+ years experience</Text>
+                <Award size={12} color="#C65D24" />
+                <Text style={styles.badgeText}>{settings.experienceYears}+ वर्ष का वैदिक अनुभव</Text>
               </View>
             ) : null}
           </View>
@@ -39,7 +39,7 @@ export const PanditProfileSection: React.FC<Props> = ({ onBookAppointment }) => 
           {settings.consultation.enabled ? (
             <TouchableOpacity style={styles.primary} onPress={onBookAppointment} activeOpacity={0.85}>
               <CalendarCheck size={15} color="#FFF" />
-              <Text style={styles.primaryText}>Book Appointment • {rupees(settings.consultation.fee)}</Text>
+              <Text style={styles.primaryText}>परामर्श बुक करें • {rupees(settings.consultation.fee)}</Text>
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity
@@ -48,53 +48,77 @@ export const PanditProfileSection: React.FC<Props> = ({ onBookAppointment }) => 
             activeOpacity={0.85}
             accessibilityLabel="Message on WhatsApp"
           >
-            <MessageCircle size={16} color={THEME.colors.goldLight} />
+            <MessageCircle size={17} color="#15803D" />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 16, marginVertical: 14 },
-  card: { borderRadius: 22, padding: 18 },
+  container: { paddingHorizontal: 16, marginVertical: 6 },
+  card: {
+    borderRadius: 20,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBE3D8',
+    shadowColor: '#382016',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   flex: { flex: 1 },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: THEME.colors.primarySaffron,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FDF2E9',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: THEME.colors.gold,
+    borderWidth: 1.5,
+    borderColor: '#F3DCB0',
   },
-  om: { fontSize: 34, color: '#FFF8E7', lineHeight: 44 },
-  name: { fontSize: 19, fontWeight: '800', color: '#FFF8E7', fontFamily: THEME.typography.serif },
-  title: { fontSize: 12.5, color: THEME.colors.goldLight, marginTop: 2 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
-  badgeText: { fontSize: 11.5, color: THEME.colors.gold, fontWeight: '700' },
-  bio: { fontSize: 13, color: '#E9DCCB', marginTop: 12, lineHeight: 19 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  om: { fontSize: 28, color: '#C65D24', lineHeight: 36 },
+  name: { fontSize: 17, fontWeight: '700', color: '#2A170F', fontFamily: THEME.typography.serif },
+  title: { fontSize: 12, color: '#C65D24', marginTop: 2, fontWeight: '600' },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 5,
+    backgroundColor: '#FAF5ED',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#F0E5D4',
+  },
+  badgeText: { fontSize: 10.5, color: '#8C5A24', fontWeight: '600' },
+  bio: { fontSize: 12, color: '#594D44', marginTop: 10, lineHeight: 17 },
+  actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
   primary: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: THEME.colors.primarySaffron,
-    borderRadius: 999,
-    paddingVertical: 12,
+    gap: 7,
+    backgroundColor: '#C65D24',
+    borderRadius: 12,
+    paddingVertical: 11,
   },
-  primaryText: { color: '#FFF', fontWeight: '800', fontSize: 13.5 },
+  primaryText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
   secondary: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#E6F4EA',
     borderWidth: 1,
-    borderColor: THEME.colors.goldFoil,
+    borderColor: '#C6E8CF',
     alignItems: 'center',
     justifyContent: 'center',
   },

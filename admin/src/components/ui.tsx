@@ -6,10 +6,10 @@ import { Loader2, X } from 'lucide-react';
 type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'danger';
 
 const buttonClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-[var(--saffron)] text-white hover:opacity-90',
-  outline: 'border border-[var(--border-color)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
-  ghost: 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
-  danger: 'bg-[var(--red)] text-white hover:opacity-90',
+  primary: 'bg-[var(--saffron)] text-white hover:opacity-90 shadow-sm',
+  outline: 'border border-[var(--border-color)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] shadow-xs',
+  ghost: 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+  danger: 'bg-[var(--red)] text-white hover:opacity-90 shadow-sm',
 };
 
 export function Button({
@@ -24,7 +24,7 @@ export function Button({
     <button
       {...props}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${buttonClasses[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${buttonClasses[variant]} ${className}`}
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
       {children}
@@ -33,7 +33,7 @@ export function Button({
 }
 
 const fieldClass =
-  'w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--saffron)] placeholder:text-[var(--text-muted)]';
+  'w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-sm font-medium text-[var(--text-primary)] outline-none transition focus:border-[var(--saffron)] focus:ring-2 focus:ring-[var(--saffron)]/20 placeholder:text-[var(--text-muted)]';
 
 export function Label({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
@@ -92,19 +92,30 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
 }
 
 const toneClasses = {
-  amber: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-  green: 'bg-green-500/15 text-green-700 dark:text-green-400',
-  blue: 'bg-blue-500/15 text-blue-700 dark:text-blue-400',
-  gray: 'bg-gray-500/15 text-[var(--text-secondary)]',
-  red: 'bg-red-500/15 text-red-600 dark:text-red-400',
+  amber: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 font-bold border border-amber-300/40 dark:border-amber-700/40',
+  green: 'bg-green-500/15 text-green-800 dark:text-green-300 font-bold border border-green-300/40 dark:border-green-700/40',
+  blue: 'bg-blue-500/15 text-blue-800 dark:text-blue-300 font-bold border border-blue-300/40 dark:border-blue-700/40',
+  gray: 'bg-stone-500/15 text-[var(--text-primary)] font-bold border border-[var(--border-color)]',
+  red: 'bg-red-500/15 text-red-700 dark:text-red-300 font-bold border border-red-300/40 dark:border-red-700/40',
 };
 
 export function Badge({ tone = 'gray', children }: { tone?: keyof typeof toneClasses; children: React.ReactNode }) {
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${toneClasses[tone]}`}>{children}</span>;
+  return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs ${toneClasses[tone]}`}>{children}</span>;
 }
 
-export function Card({ className = '', children }: { className?: string; children: React.ReactNode }) {
-  return <div className={`rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 ${className}`}>{children}</div>;
+export function Card({ className = '', children, style, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  const hasPadding = /\bp-\d|\bpx-\d|\bpy-\d|\bp-\[|\bp-0\b/.test(className);
+  return (
+    <div
+      {...props}
+      style={{ boxShadow: 'var(--card-shadow)', ...style }}
+      className={`rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] transition duration-200 ${
+        hasPadding ? '' : 'p-5 sm:p-6'
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function Spinner({ className = '' }: { className?: string }) {
@@ -145,13 +156,15 @@ export function Modal({
   children,
   footer,
   wide,
+  extraWide,
 }: {
   open: boolean;
   onClose: () => void;
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
   wide?: boolean;
+  extraWide?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -166,11 +179,13 @@ export function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className={`flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-[var(--bg-surface)] shadow-2xl sm:rounded-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'}`}
+        className={`flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-[var(--bg-surface)] shadow-2xl sm:rounded-2xl ${
+          extraWide ? 'sm:max-w-5xl' : wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--border-color)] px-5 py-3">
-          <h3 className="text-base font-bold">{title}</h3>
+          <div className="text-base font-bold">{title}</div>
           <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-[var(--bg-hover)]" aria-label="Close">
             <X className="h-5 w-5" />
           </button>

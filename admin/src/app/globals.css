@@ -1,50 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+}
+
 :root {
-  --bg-primary: #FAF7F2;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  --bg-primary: #F7F5F0;
   --bg-surface: #FFFFFF;
   --bg-card: #FFFFFF;
-  --bg-hover: #F5EFE7;
-  --border-color: #EFE7DD;
-  --border-subtle: #F3ECE1;
-  --text-primary: #2A170F;
-  --text-secondary: #786B60;
-  --text-muted: #9E9185;
-  --saffron: #C65D24;
+  --bg-hover: #F3ECE1;
+  --border-color: #E2D7C8;
+  --border-subtle: #ECE4D8;
+  --text-primary: #1C120C;
+  --text-secondary: #4A3E34;
+  --text-muted: #6E6053;
+  --saffron: #C6541A;
   --saffron-light: #FDF2E9;
-  --gold: #D4AF37;
+  --gold: #B8860B;
   --green: #15803D;
   --green-bg: #DCFCE7;
   --red: #DC2626;
   --red-bg: #FEF2F2;
+  --card-shadow: 0 4px 16px -2px rgba(42, 23, 15, 0.08), 0 2px 6px -1px rgba(42, 23, 15, 0.04);
+  --card-shadow-hover: 0 12px 28px -4px rgba(198, 84, 26, 0.15), 0 4px 12px -2px rgba(42, 23, 15, 0.08);
 }
 
 html.dark, .dark {
-  --bg-primary: #0C0907;
-  --bg-surface: #15100C;
-  --bg-card: #1D1612;
-  --bg-hover: #261D17;
-  --border-color: #33261D;
-  --border-subtle: #2A1F18;
-  --text-primary: #F8EFE6;
-  --text-secondary: #B8A89A;
-  --text-muted: #7E7064;
-  --saffron: #E06E2E;
-  --saffron-light: #2A1B12;
+  --bg-primary: #0A0807;
+  --bg-surface: #14100D;
+  --bg-card: #17120E;
+  --bg-hover: #221A14;
+  --border-color: #2F241C;
+  --border-subtle: #241C15;
+  --text-primary: #FAF5EE;
+  --text-secondary: #D4C6B7;
+  --text-muted: #9E8F7F;
+  --saffron: #ED6F28;
+  --saffron-light: #2C180E;
   --gold: #E5BE4A;
   --green: #22C55E;
   --green-bg: #14291A;
   --red: #EF4444;
   --red-bg: #2B1515;
+  /* Deep ambient dark mode shadow with subtle specular top edge */
+  --card-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.07), 0 10px 28px -5px rgba(0, 0, 0, 0.85), 0 2px 8px -1px rgba(0, 0, 0, 0.6);
+  --card-shadow-hover: inset 0 1px 2px 0 rgba(255, 255, 255, 0.14), 0 16px 36px -6px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(237, 111, 40, 0.45);
 }
 
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
+  letter-spacing: -0.015em;
+  line-height: 1.55;
   transition: background-color 0.2s ease, color 0.2s ease;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.025em;
 }
 
 ::-webkit-scrollbar {

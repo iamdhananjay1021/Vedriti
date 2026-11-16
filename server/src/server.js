@@ -4,6 +4,8 @@ import { createApp } from './app.js';
 import { config } from './config/env.js';
 import { connectDatabase } from './config/db.js';
 import { startMaintenance } from './services/maintenanceService.js';
+import { startBroadcastWorker } from './services/broadcastService.js';
+import { startKeepAlive } from './services/keepAliveService.js';
 
 const start = async () => {
   try {
@@ -19,10 +21,14 @@ const start = async () => {
   });
 
   const maintenance = startMaintenance();
+  const broadcastWorker = startBroadcastWorker();
+  const keepAlive = startKeepAlive();
 
   const shutdown = (signal) => {
     console.log(`[VedRit API] ${signal} received, shutting down`);
     clearInterval(maintenance);
+    clearInterval(broadcastWorker);
+    if (keepAlive) clearInterval(keepAlive);
     server.close(async () => {
       await mongoose.disconnect();
       process.exit(0);

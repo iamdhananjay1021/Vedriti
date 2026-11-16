@@ -4,14 +4,20 @@ import React, { useCallback, useEffect, useState, useSyncExternalStore } from 'r
 import { AdminShell, AdminTab, TABS } from '../../components/AdminShell';
 import { LoginForm } from '../../components/LoginForm';
 import { Spinner } from '../../components/ui';
-import { OverviewTab } from '../../components/tabs/OverviewTab';
+import { DashboardTab } from '../../components/tabs/OverviewTab';
 import { HomeTab } from '../../components/tabs/HomeTab';
 import { BookingsTab } from '../../components/tabs/BookingsTab';
+import { SamuhikTab } from '../../components/tabs/SamuhikTab';
 import { ScheduleTab } from '../../components/tabs/ScheduleTab';
 import { KundliTab } from '../../components/tabs/KundliTab';
 import { OrdersTab } from '../../components/tabs/OrdersTab';
 import { CatalogTab } from '../../components/tabs/CatalogTab';
 import { DevoteesTab } from '../../components/tabs/DevoteesTab';
+import { InquiriesTab } from '../../components/tabs/InquiriesTab';
+import { CouponsTab } from '../../components/tabs/CouponsTab';
+import { AnnouncementsTab } from '../../components/tabs/AnnouncementsTab';
+import { BroadcastsTab } from '../../components/tabs/BroadcastsTab';
+import { StaffTab } from '../../components/tabs/StaffTab';
 import { SettingsTab } from '../../components/tabs/SettingsTab';
 import { adminApi, setUnauthorizedHandler, tokenStore } from '../../lib/api';
 
@@ -19,7 +25,8 @@ type AuthState = { status: 'checking' } | { status: 'out' } | { status: 'in'; em
 
 const readTab = (): AdminTab => {
   const hash = window.location.hash.slice(1);
-  return (TABS.find((t) => t.id === hash)?.id ?? 'overview') as AdminTab;
+  if (hash === 'overview') return 'dashboard';
+  return (TABS.find((t) => t.id === hash)?.id ?? 'dashboard') as AdminTab;
 };
 
 const subscribeHash = (callback: () => void) => {
@@ -29,7 +36,7 @@ const subscribeHash = (callback: () => void) => {
 
 export default function AdminPage() {
   const [auth, setAuth] = useState<AuthState>({ status: 'checking' });
-  const tab = useSyncExternalStore(subscribeHash, readTab, () => 'overview' as AdminTab);
+  const tab = useSyncExternalStore(subscribeHash, readTab, () => 'dashboard' as AdminTab);
   const [badges, setBadges] = useState<Partial<Record<AdminTab, number>>>({});
   const [badgeTick, setBadgeTick] = useState(0);
 
@@ -80,14 +87,20 @@ export default function AdminPage() {
 
   return (
     <AdminShell active={tab} onChange={changeTab} email={auth.email} onLogout={logout} badges={badges}>
-      {tab === 'overview' && <OverviewTab onNavigate={changeTab} />}
+      {tab === 'dashboard' && <DashboardTab onNavigate={changeTab} />}
       {tab === 'home' && <HomeTab />}
       {tab === 'bookings' && <BookingsTab onChanged={refreshBadges} />}
+      {tab === 'samuhik' && <SamuhikTab />}
       {tab === 'schedule' && <ScheduleTab />}
       {tab === 'kundli' && <KundliTab onChanged={refreshBadges} />}
       {tab === 'orders' && <OrdersTab onChanged={refreshBadges} />}
       {tab === 'catalog' && <CatalogTab />}
       {tab === 'devotees' && <DevoteesTab />}
+      {tab === 'inquiries' && <InquiriesTab />}
+      {tab === 'coupons' && <CouponsTab />}
+      {tab === 'announcements' && <AnnouncementsTab />}
+      {tab === 'broadcasts' && <BroadcastsTab />}
+      {tab === 'staff' && <StaffTab />}
       {tab === 'settings' && <SettingsTab />}
     </AdminShell>
   );

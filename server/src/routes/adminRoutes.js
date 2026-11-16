@@ -2,6 +2,8 @@ import { Router } from 'express';
 import express from 'express';
 import * as admin from '../controllers/adminController.js';
 import * as content from '../controllers/contentController.js';
+import * as samuhik from '../controllers/samuhikController.js';
+import broadcastRoutes from './broadcastRoutes.js';
 import { requireAdmin } from '../middlewares/authMiddleware.js';
 import { authLimiter } from '../middlewares/rateLimiter.js';
 import { validateBody } from '../middlewares/validateRequest.js';
@@ -39,7 +41,7 @@ router.post('/products', validateBody(admin.ProductInputSchema), admin.productCr
 router.put('/products/:id', validateBody(admin.ProductInputSchema), admin.productCrud.update);
 router.delete('/products/:id', admin.productCrud.remove);
 
-router.post('/media', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '3mb' }), content.uploadMedia);
+router.post('/media', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], limit: '10mb' }), content.uploadMedia);
 
 router.get('/banners', content.listBanners);
 router.post('/banners', validateBody(content.BannerSchema), content.createBanner);
@@ -52,5 +54,37 @@ router.put('/settings', validateBody(admin.SettingsSchema), admin.updateAdminSet
 router.get('/schedule', admin.getDaySchedule);
 router.post('/schedule/blocks', validateBody(admin.BlockSchema), admin.createBlock);
 router.delete('/schedule/blocks/:group', admin.deleteBlock);
+
+// Vedic AI Inquiries & Devotee Consultation Sessions
+router.get('/chat-sessions', admin.listChatSessions);
+router.get('/chat-sessions/:sessionId', admin.getChatSessionDetail);
+
+// Admin Staff & Sub-Admins
+router.get('/staff', admin.listStaff);
+router.post('/staff', validateBody(admin.StaffInputSchema), admin.createStaff);
+router.patch('/staff/:id', admin.updateStaff);
+router.delete('/staff/:id', admin.deleteStaff);
+
+// Coupons & Festival Discounts
+router.get('/coupons', admin.listCoupons);
+router.post('/coupons', validateBody(admin.CouponSchema), admin.createCoupon);
+router.put('/coupons/:id', validateBody(admin.CouponSchema), admin.updateCoupon);
+router.delete('/coupons/:id', admin.deleteCoupon);
+
+// Temple Announcements & Broadcasts
+router.get('/announcements', admin.listAnnouncements);
+router.post('/announcements', validateBody(admin.AnnouncementSchema), admin.createAnnouncement);
+router.put('/announcements/:id', validateBody(admin.AnnouncementSchema), admin.updateAnnouncement);
+router.delete('/announcements/:id', admin.deleteAnnouncement);
+
+// Samuhik Mahapujas Management
+router.get('/samuhik-pujas', samuhik.adminListSamuhikPujas);
+router.post('/samuhik-pujas', validateBody(samuhik.SamuhikPujaInputSchema), samuhik.adminCreateSamuhikPuja);
+router.patch('/samuhik-pujas/:id', samuhik.adminUpdateSamuhikPuja);
+router.get('/samuhik-pujas/:id/devotees', samuhik.adminGetSamuhikDevotees);
+router.post('/samuhik-pujas/:id/proof', samuhik.adminUploadProof);
+
+// Broadcast messaging (super admin only)
+router.use('/broadcasts', broadcastRoutes);
 
 export default router;

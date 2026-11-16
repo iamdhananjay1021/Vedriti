@@ -56,6 +56,9 @@ export const serializeKundli = (k) => ({
   paymentUrl: k.paymentStatus !== 'PAID' && k.status !== 'CLOSED' ? k.paymentLinkUrl || null : null,
   status: k.status,
   panditResponse: k.panditResponse,
+  reportUrl: k.reportUrl || '',
+  reportName: k.reportName || '',
+  attachments: k.attachments || [],
   respondedAt: k.respondedAt,
   createdAt: k.createdAt,
 });

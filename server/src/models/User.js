@@ -29,6 +29,7 @@ const UserSchema = new Schema(
     placeOfBirth: { type: String, trim: true, maxlength: 120, default: '' },
     gotra: { type: String, trim: true, maxlength: 60, default: '' },
     rashi: { type: String, trim: true, maxlength: 40, default: '' },
+    nakshatra: { type: String, trim: true, maxlength: 60, default: '' },
     city: { type: String, trim: true, maxlength: 80, default: '' },
     state: { type: String, trim: true, maxlength: 80, default: '' },
     address: { type: String, trim: true, maxlength: 300, default: '' },
@@ -36,7 +37,15 @@ const UserSchema = new Schema(
     profileCompleted: { type: Boolean, default: false, index: true },
     familyMembers: { type: [FamilyMemberSchema], default: [] },
     isBlocked: { type: Boolean, default: false },
+    marketingOptOut: { type: Boolean, default: false },
     lastLoginAt: { type: Date },
+    // Nitya Puja Virtual Mandir & Japa Tracker
+    dailyPujaStreak: { type: Number, default: 0 },
+    lastPujaDate: { type: String, default: '' },
+    totalDiyaLit: { type: Number, default: 0 },
+    totalJapaCount: { type: Number, default: 0 },
+    totalMalasCompleted: { type: Number, default: 0 },
+    favoriteDeity: { type: String, default: 'SHIVA' },
   },
   { timestamps: true }
 );
@@ -59,6 +68,7 @@ UserSchema.methods.toPublic = function toPublic() {
     placeOfBirth: this.placeOfBirth,
     gotra: this.gotra,
     rashi: this.rashi,
+    nakshatra: this.nakshatra,
     city: this.city,
     state: this.state,
     address: this.address,
@@ -73,6 +83,12 @@ UserSchema.methods.toPublic = function toPublic() {
       rashi: m.rashi,
       nakshatra: m.nakshatra,
     })),
+    dailyPujaStreak: this.dailyPujaStreak || 0,
+    lastPujaDate: this.lastPujaDate || '',
+    totalDiyaLit: this.totalDiyaLit || 0,
+    totalJapaCount: this.totalJapaCount || 0,
+    totalMalasCompleted: this.totalMalasCompleted || 0,
+    favoriteDeity: this.favoriteDeity || 'SHIVA',
     createdAt: this.createdAt,
   };
 };

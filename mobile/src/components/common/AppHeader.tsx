@@ -1,9 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CalendarCheck, ChevronLeft, Search } from 'lucide-react-native';
+import { Bell, CalendarCheck, ChevronLeft, Search, Languages } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
 import { SPACE } from '../../constants/ui';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { useInbox } from '../../context/InboxContext';
 import { Avatar } from './Avatar';
 import { BrandLogo } from './BrandLogo';
 
@@ -36,6 +38,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   rightActions,
 }) => {
   const { user } = useAuth();
+  const { language, toggleLanguage, t } = useLanguage();
+  const { unreadCount, open: openInbox } = useInbox();
   const heading = title || 'VedRit';
 
   return (
@@ -57,19 +61,41 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       )}
 
       <View style={styles.actions}>
+        {/* Global Language Toggle */}
+        <TouchableOpacity
+          onPress={toggleLanguage}
+          activeOpacity={0.8}
+          style={styles.langPill}
+          accessibilityRole="button"
+          accessibilityLabel="Switch language"
+        >
+          <Languages size={13} color="#C65D24" />
+          <Text style={styles.langText}>{language === 'hi' ? 'EN' : 'हिन्दी'}</Text>
+        </TouchableOpacity>
+
         {onSearchPress ? (
-          <HeaderIconButton onPress={onSearchPress} label="Search pujas">
+          <HeaderIconButton onPress={onSearchPress} label={t.searchPlaceholder}>
             <Search size={18} color={THEME.colors.heading} />
           </HeaderIconButton>
         ) : null}
         {onNotificationPress ? (
-          <HeaderIconButton onPress={onNotificationPress} label="My bookings">
+          <HeaderIconButton onPress={onNotificationPress} label={t.myBookings}>
             <CalendarCheck size={18} color={THEME.colors.heading} />
           </HeaderIconButton>
         ) : null}
+        <View>
+          <HeaderIconButton onPress={openInbox} label={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}>
+            <Bell size={18} color={THEME.colors.heading} />
+          </HeaderIconButton>
+          {unreadCount > 0 ? (
+            <View style={styles.badge} pointerEvents="none">
+              <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+            </View>
+          ) : null}
+        </View>
         {rightActions}
         {onProfilePress ? (
-          <TouchableOpacity onPress={onProfilePress} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="My account">
+          <TouchableOpacity onPress={onProfilePress} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel={t.yourProfile}>
             <Avatar uri={user?.avatarUrl} name={user?.name} size={38} />
           </TouchableOpacity>
         ) : null}
@@ -94,7 +120,38 @@ const styles = StyleSheet.create({
     color: THEME.colors.heading,
   },
   brand: { flex: 1 },
+  badge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: '#DC2626',
+    borderWidth: 1.5,
+    borderColor: '#FAF6EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
   actions: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
+  langPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FAF5ED',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F0E5D4',
+  },
+  langText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#C65D24',
+  },
   iconButton: {
     width: 38,
     height: 38,

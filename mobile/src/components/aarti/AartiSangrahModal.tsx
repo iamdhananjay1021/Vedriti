@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -6,27 +6,19 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
   Share,
   Platform,
-  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   X,
   Play,
   Pause,
-  RotateCcw,
-  Volume2,
   Share2,
-  BookOpen,
-  Music,
-  ChevronRight,
   Sparkles,
 } from 'lucide-react-native';
 import { AARTI_COLLECTION, AartiItem } from '../../data/spiritualData';
-
-const { width } = Dimensions.get('window');
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Props {
   visible: boolean;
@@ -35,6 +27,9 @@ interface Props {
 }
 
 export const AartiSangrahModal: React.FC<Props> = ({ visible, onClose, initialAartiId }) => {
+  const { language } = useLanguage();
+  const isHi = language === 'hi';
+
   const [selectedAarti, setSelectedAarti] = useState<AartiItem>(
     AARTI_COLLECTION.find((a) => a.id === initialAartiId) || AARTI_COLLECTION[0]
   );
@@ -45,7 +40,7 @@ export const AartiSangrahModal: React.FC<Props> = ({ visible, onClose, initialAa
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `🙏 ॐ वेदरीति आरती व चालीसा संग्रह 🙏\n\n${selectedAarti.title} (${selectedAarti.deity}):\n\n${selectedAarti.lyrics.slice(0, 10).join('\n')}\n...\n\nसम्पूर्ण आरती व चालीसा पाठ वेदरीति ऐप पर सुनें: https://vedriti.com`,
+        message: `🙏 ॐ वेदरीति आरती व चालीसा संग्रह 🙏\n\n${selectedAarti.title} (${selectedAarti.deity}):\n\n${selectedAarti.lyrics.slice(0, 10).join('\n')}\n...\n\nसम्पूर्ण पाठ वेदरीति ऐप पर सुनें: https://vedriti.com`,
       });
     } catch (e) {
       console.warn('Share error:', e);
@@ -61,23 +56,27 @@ export const AartiSangrahModal: React.FC<Props> = ({ visible, onClose, initialAa
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={styles.container}>
         <LinearGradient
-          colors={['#170b04', '#260e04', '#120501']}
+          colors={['#FFFDF9', '#FAF5EC', '#F4EDE2']}
           style={StyleSheet.absoluteFill}
         />
 
         {/* Top Header */}
         <View style={styles.topBar}>
           <TouchableOpacity onPress={onClose} style={styles.iconBtn} activeOpacity={0.8}>
-            <X size={20} color="#FDE68A" />
+            <X size={18} color="#2A170F" />
           </TouchableOpacity>
 
           <View style={styles.topTitleBox}>
-            <Text style={styles.topTitle}>दैनिक आरती व चालीसा संग्रह</Text>
-            <Text style={styles.topSubtitle}>पावन स्तुति व भक्ति रस</Text>
+            <Text style={styles.topTitle}>
+              {isHi ? 'दैनिक आरती व चालीसा संग्रह' : 'Aarti & Chalisa Sangrah'}
+            </Text>
+            <Text style={styles.topSubtitle}>
+              {isHi ? 'पावन स्तुति व भक्ति रस' : 'Sacred Prayers & Hymns'}
+            </Text>
           </View>
 
           <TouchableOpacity onPress={handleShare} style={styles.iconBtn} activeOpacity={0.8}>
-            <Share2 size={18} color="#FDE68A" />
+            <Share2 size={17} color="#C65D24" />
           </TouchableOpacity>
         </View>
 
@@ -88,63 +87,68 @@ export const AartiSangrahModal: React.FC<Props> = ({ visible, onClose, initialAa
               key={cat}
               onPress={() => setCategoryFilter(cat)}
               style={[styles.categoryTab, categoryFilter === cat && styles.categoryTabActive]}
+              activeOpacity={0.8}
             >
               <Text
                 style={[styles.categoryTabText, categoryFilter === cat && styles.categoryTabTextActive]}
               >
                 {cat === 'ALL'
-                  ? 'सभी'
+                  ? (isHi ? 'सभी' : 'All')
                   : cat === 'CHALISA'
-                    ? 'चालीसा'
+                    ? (isHi ? 'चालीसा' : 'Chalisa')
                     : cat === 'AARTI'
-                      ? 'आरती'
-                      : 'स्तोत्रम्'}
+                      ? (isHi ? 'आरती' : 'Aarti')
+                      : (isHi ? 'स्तोत्रम्' : 'Stotram')}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Horizontal Aartis Picker */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.aartiPickerScroll}
-        >
-          {filteredAartis.map((a) => {
-            const isSel = a.id === selectedAarti.id;
-            return (
-              <TouchableOpacity
-                key={a.id}
-                onPress={() => {
-                  setSelectedAarti(a);
-                  setIsPlaying(false);
-                }}
-                style={[styles.aartiChip, isSel && styles.aartiChipActive]}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.aartiChipTitle, isSel && styles.aartiChipTitleActive]}>
-                  {a.title}
-                </Text>
-                <Text style={styles.aartiChipDeity}>{a.deity}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <View style={styles.pickerStrip}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.aartiListContent}
+          >
+            {filteredAartis.map((a) => {
+              const isCur = a.id === selectedAarti.id;
+              return (
+                <TouchableOpacity
+                  key={a.id}
+                  onPress={() => {
+                    setSelectedAarti(a);
+                    setIsPlaying(false);
+                  }}
+                  style={[styles.aartiChip, isCur && styles.aartiChipActive]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.aartiChipTitle, isCur && styles.aartiChipTitleActive]}>
+                    {a.title}
+                  </Text>
+                  <Text style={[styles.aartiChipDeity, isCur && styles.aartiChipDeityActive]}>
+                    {a.deity}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
-        {/* Audio Player Strip */}
-        <View style={styles.playerStrip}>
+        {/* Audio Player Control Bar */}
+        <View style={styles.playerBar}>
           <View style={styles.playerLeft}>
             <TouchableOpacity
               onPress={() => setIsPlaying(!isPlaying)}
               style={styles.playBtn}
               activeOpacity={0.85}
             >
-              {isPlaying ? <Pause size={18} color="#1E1B4B" /> : <Play size={18} color="#1E1B4B" style={{ marginLeft: 2 }} />}
+              {isPlaying ? <Pause size={17} color="#FFF" /> : <Play size={17} color="#FFF" />}
             </TouchableOpacity>
             <View>
               <Text style={styles.playerTitle}>{selectedAarti.title}</Text>
               <Text style={styles.playerDuration}>
-                {isPlaying ? 'ध्वनि प्रवाह सक्रिय • ' : 'ऑडियो सुनें • '} {selectedAarti.duration}
+                {isHi ? `${selectedAarti.deity} • ऑडियो पाठ` : `${selectedAarti.deity} • Audio`}
               </Text>
             </View>
           </View>
@@ -152,43 +156,44 @@ export const AartiSangrahModal: React.FC<Props> = ({ visible, onClose, initialAa
           {/* Font Size Adjusters */}
           <View style={styles.fontControls}>
             <TouchableOpacity
-              onPress={() => setFontSize(Math.max(12, fontSize - 1))}
+              onPress={() => setFontSize(Math.max(13, fontSize - 1))}
               style={styles.fontBtn}
+              activeOpacity={0.8}
             >
               <Text style={styles.fontBtnText}>A-</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setFontSize(Math.min(22, fontSize + 1))}
               style={styles.fontBtn}
+              activeOpacity={0.8}
             >
               <Text style={styles.fontBtnText}>A+</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Full Lyrics Container */}
-        <ScrollView
-          style={styles.lyricsScroll}
-          contentContainerStyle={styles.lyricsContainer}
-          showsVerticalScrollIndicator={false}
-        >
+        {/* Lyrics Scroll View */}
+        <ScrollView style={styles.lyricsScroll} contentContainerStyle={styles.lyricsContainer}>
           <View style={styles.lyricsCard}>
             <View style={styles.deityTag}>
-              <Sparkles size={13} color="#F59E0B" />
+              <Sparkles size={11} color="#C65D24" />
               <Text style={styles.deityTagText}>{selectedAarti.deity}</Text>
             </View>
-
             <Text style={styles.lyricsHeaderTitle}>{selectedAarti.title}</Text>
             <View style={styles.lyricsDivider} />
 
-            {selectedAarti.lyrics.map((line, index) => {
-              const isHeading = line.startsWith('॥');
+            {selectedAarti.lyrics.map((line, idx) => {
+              const isHeading =
+                line.startsWith('॥') ||
+                line.startsWith('दोहा') ||
+                line.startsWith('चौपाई') ||
+                line.startsWith('॥ इति');
               return (
                 <Text
-                  key={index}
+                  key={idx}
                   style={[
                     styles.lyricLine,
-                    { fontSize: isHeading ? fontSize + 1 : fontSize },
+                    { fontSize },
                     isHeading && styles.lyricHeading,
                   ]}
                 >
@@ -206,23 +211,26 @@ export const AartiSangrahModal: React.FC<Props> = ({ visible, onClose, initialAa
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#120501',
+    backgroundColor: '#FFFDF9',
   },
   topBar: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS === 'ios' ? 52 : 24,
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(245, 158, 11, 0.15)',
+    borderBottomColor: '#EFE7DD',
+    backgroundColor: '#FFFFFF',
   },
   iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#FAF5ED',
+    borderWidth: 1,
+    borderColor: '#EFE4D2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -230,84 +238,97 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FEF3C7',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2A170F',
   },
   topSubtitle: {
     fontSize: 11,
-    color: '#D97706',
+    color: '#786B60',
     marginTop: 1,
   },
   categoryRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#FFFDF9',
   },
   categoryTab: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
     paddingVertical: 6,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8DED2',
   },
   categoryTabActive: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#C65D24',
+    borderColor: '#C65D24',
   },
   categoryTabText: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '600',
-    color: '#D1D5DB',
+    color: '#554A41',
   },
   categoryTabTextActive: {
-    color: '#1E1B4B',
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
-  aartiPickerScroll: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+  pickerStrip: {
+    paddingBottom: 8,
+  },
+  aartiListContent: {
+    paddingHorizontal: 14,
     gap: 8,
   },
   aartiChip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#E8DFD3',
+    minWidth: 110,
   },
   aartiChipActive: {
-    backgroundColor: 'rgba(245, 158, 11, 0.18)',
-    borderColor: '#F59E0B',
+    backgroundColor: '#FEF3EB',
+    borderColor: '#C65D24',
   },
   aartiChipTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#E5E7EB',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2A170F',
   },
   aartiChipTitleActive: {
-    color: '#FEF3C7',
-    fontWeight: '800',
+    color: '#C65D24',
+    fontWeight: '700',
   },
   aartiChipDeity: {
     fontSize: 10,
-    color: '#F59E0B',
+    color: '#786B60',
     marginTop: 2,
   },
-  playerStrip: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    borderRadius: 16,
+  aartiChipDeityActive: {
+    color: '#A04213',
+  },
+  playerBar: {
+    marginHorizontal: 14,
+    marginVertical: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
-    paddingHorizontal: 14,
+    borderColor: '#EBE3D8',
+    paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    shadowColor: '#382016',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   playerLeft: {
     flexDirection: 'row',
@@ -316,21 +337,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   playBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F59E0B',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#C65D24',
     alignItems: 'center',
     justifyContent: 'center',
   },
   playerTitle: {
     fontSize: 13,
-    fontWeight: '800',
-    color: '#FEF3C7',
+    fontWeight: '700',
+    color: '#2A170F',
   },
   playerDuration: {
-    fontSize: 10,
-    color: '#FDE68A',
+    fontSize: 10.5,
+    color: '#786B60',
     marginTop: 1,
   },
   fontControls: {
@@ -340,69 +361,78 @@ const styles = StyleSheet.create({
   fontBtn: {
     width: 28,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    backgroundColor: '#FAF5ED',
+    borderWidth: 1,
+    borderColor: '#F0E5D4',
     alignItems: 'center',
     justifyContent: 'center',
   },
   fontBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FEF3C7',
+    color: '#C65D24',
   },
   lyricsScroll: {
     flex: 1,
   },
   lyricsContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
+    paddingTop: 8,
     paddingBottom: 40,
   },
   lyricsCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.18)',
+    borderColor: '#EBE3D8',
     padding: 18,
     alignItems: 'center',
+    shadowColor: '#382016',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
   deityTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    paddingHorizontal: 10,
+    backgroundColor: '#FEF3EB',
+    paddingHorizontal: 9,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F5DDC7',
   },
   deityTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#F59E0B',
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#C65D24',
   },
   lyricsHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#FEF3C7',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#2A170F',
     marginTop: 8,
   },
   lyricsDivider: {
     width: '100%',
     height: 1,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    marginVertical: 14,
+    backgroundColor: '#F3EADB',
+    marginVertical: 12,
   },
   lyricLine: {
-    color: '#E5E7EB',
+    color: '#3C2E24',
     textAlign: 'center',
-    lineHeight: 28,
+    lineHeight: 26,
     marginVertical: 2,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   lyricHeading: {
-    color: '#F59E0B',
-    fontWeight: '800',
+    color: '#C65D24',
+    fontWeight: '700',
     marginTop: 12,
     marginBottom: 6,
   },
 });
-

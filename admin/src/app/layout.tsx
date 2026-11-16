@@ -1,21 +1,30 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Plus_Jakarta_Sans, Outfit, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '../context/ThemeContext';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: '--font-sans',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+});
+
+const outfit = Outfit({
+  variable: '--font-heading',
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800', '900'],
+  display: 'swap',
 });
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+  variable: '--font-mono',
   subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  title: 'VedRit • Pandit Ji Puja, Appointment & Kundli',
-  description: 'Book pujas, appointments and kundli consultations directly with Pandit Ji.',
+  title: 'VedRit • Sacred Temple & Devotee Administration',
+  description: 'Bookings, rituals, devotees, kundli, and spiritual store management platform.',
 };
 
 export default function RootLayout({
@@ -24,8 +33,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+    <html lang="en" suppressHydrationWarning className={`${plusJakarta.variable} ${outfit.variable} ${geistMono.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col font-sans">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

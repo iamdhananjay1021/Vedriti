@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config/api';
 import { session } from './session';
 import type {
+  InboxNotification,
   ApiProduct,
   ApiPuja,
   ApiSamuhikPuja,
@@ -30,6 +31,11 @@ type Listener = () => void;
 let unauthorizedListener: Listener | null = null;
 export const onUnauthorized = (listener: Listener | null) => {
   unauthorizedListener = listener;
+};
+
+let profileRequiredListener: Listener | null = null;
+export const onProfileRequired = (listener: Listener | null) => {
+  profileRequiredListener = listener;
 };
 
 const REQUEST_TIMEOUT_MS = 20000;
@@ -64,6 +70,7 @@ async function request<T>(method: string, path: string, body?: unknown, auth = t
   const json = await res.json().catch(() => null);
   if (!res.ok) {
     if (res.status === 401 && auth && token) unauthorizedListener?.();
+    if (res.status === 428) profileRequiredListener?.();
     throw new ApiError(json?.message || 'Something went wrong. Please try again.', res.status);
   }
   return (json?.data ?? json) as T;
@@ -128,8 +135,9 @@ export interface EmailOtpResult {
 }
 
 export const api = {
-  requestEmailOtp: (email: string, phone: string) => request<EmailOtpResult>('POST', '/auth/email/request-otp', { email, phone }, false),
-  verifyEmailOtp: (email: string, phone: string, otp: string) => request<AuthResult>('POST', '/auth/email/verify-otp', { email, phone, otp }, false),
+  requestEmailOtp: (email: string, phone?: string) => request<EmailOtpResult>('POST', '/auth/email/request-otp', { email, ...(phone ? { phone } : {}) }, false),
+  verifyEmailOtp: (email: string, phone: string | undefined, otp: string) =>
+    request<AuthResult>('POST', '/auth/email/verify-otp', { email, ...(phone ? { phone } : {}), otp }, false),
   signupEmail: (email: string, phone: string, password: string, otp: string, name?: string) =>
     request<AuthResult>('POST', '/auth/signup-email', { email, phone, password, otp, name }, false),
   forgotPassword: (email: string) => request<EmailOtpResult>('POST', '/auth/password/forgot', { email }, false),
@@ -199,4 +207,7 @@ export const api = {
   enrollSamuhikPuja: (id: string, input: SamuhikEnrollInput) =>
     request<{ message: string; booking: any }>('POST', `/samuhik-pujas/${id}/enroll`, input, true),
   mySamuhikBookings: () => request<any[]>('GET', '/devotee/samuhik-bookings', undefined, true),
+
+  notifications: () => request<{ unreadCount: number; items: InboxNotification[] }>('GET', '/me/notifications', undefined, true),
+  markNotificationsRead: (ids?: string[]) => request<{ success: boolean }>('POST', '/me/notifications/read', ids ? { ids } : {}, true),
 };

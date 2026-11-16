@@ -75,68 +75,122 @@ export function ScheduleTab() {
   const isDayOff = settings?.blockedDates.includes(date);
 
   return (
-    <div className="space-y-4">
-      <Card className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" onClick={() => setDate(addDays(date, -1))} aria-label="Previous day">
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => e.target.value && setDate(e.target.value)}
-          className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)] px-3 py-2 text-sm"
-        />
-        <Button variant="outline" onClick={() => setDate(addDays(date, 1))} aria-label="Next day">
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" onClick={() => setDate(todayIst())}>
-          Today
-        </Button>
-        <span className="ml-auto font-semibold">{formatDate(date)}</span>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--saffron)] to-amber-600 text-xl font-bold text-white shadow-md">
+            ॐ
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-heading font-black tracking-tight text-[var(--text-primary)]">
+            Schedule & Slots Management
+          </h1>
+        </div>
+        <p className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">
+          Manage Pandit Ji daily ritual slots, blocked intervals, holiday closures, and live calendar availability.
+        </p>
+      </div>
+
+      {/* Date Navigator Card */}
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setDate(addDays(date, -1))} aria-label="Previous day" className="p-2">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => e.target.value && setDate(e.target.value)}
+            className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] px-3 py-2 text-xs sm:text-sm font-bold text-[var(--text-primary)] outline-none focus:border-[var(--saffron)] shadow-2xs"
+          />
+          <Button variant="outline" onClick={() => setDate(addDays(date, 1))} aria-label="Next day" className="p-2">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" onClick={() => setDate(todayIst())} className="font-bold text-xs py-2 px-3">
+            Today
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isDayOff ? (
+            <Badge tone="red">● Day Off (Closed)</Badge>
+          ) : view?.dayAvailability ? (
+            <Badge tone="amber">{view.dayAvailability}</Badge>
+          ) : (
+            <Badge tone="green">● Open for Rituals</Badge>
+          )}
+          <span className="font-heading font-bold text-sm sm:text-base text-[var(--text-primary)]">
+            {formatDate(date)}
+          </span>
+        </div>
       </Card>
 
       {error ? <ErrorBox message={error} onRetry={load} /> : null}
       {!view && !error ? <Spinner /> : null}
 
       {view ? (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
-            <Card>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-bold">Bookings</h2>
-                {view.dayAvailability ? <Badge tone="amber">{view.dayAvailability}</Badge> : <Badge tone="green">Open for booking</Badge>}
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div className="space-y-5 lg:col-span-2">
+            <Card className="space-y-4 p-5 sm:p-6 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] pb-3">
+                <h2 className="font-heading font-bold text-lg text-[var(--text-primary)]">
+                  Scheduled Bookings on this Day
+                </h2>
+                <span className="rounded-full bg-[var(--saffron)]/15 px-3 py-0.5 text-xs font-bold text-[var(--saffron)]">
+                  {view.bookings.length} Bookings
+                </span>
               </div>
               {view.bookings.length ? (
-                <div className="divide-y divide-[var(--border-color)]">
+                <div className="space-y-3">
                   {view.bookings.map((b) => (
-                    <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                      <div>
-                        <p className="font-semibold">
-                          {formatTime(b.startTime)} - {formatTime(b.endTime)} • {b.title}
-                        </p>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {b.devoteeName} • {b.phone} • {MODE_LABELS[b.mode]}
-                        </p>
+                    <div
+                      key={b.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] p-3.5 shadow-2xs transition hover:border-[var(--saffron)]"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-extrabold text-[var(--saffron)]">#{b.bookingId}</span>
+                          <h4 className="font-heading font-bold text-sm text-[var(--text-primary)]">{b.title}</h4>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-secondary)]">
+                          <span className="text-blue-600 font-bold">
+                            {formatTime(b.startTime)} - {formatTime(b.endTime)}
+                          </span>
+                          <span>•</span>
+                          <span>यजमान: <strong className="text-[var(--text-primary)]">{b.devoteeName}</strong></span>
+                          <span>•</span>
+                          <span className="font-mono">{b.phone}</span>
+                          <span>•</span>
+                          <span>{MODE_LABELS[b.mode]}</span>
+                        </div>
                       </div>
                       <Badge tone={TONE[b.status]}>{BOOKING_STATUS[b.status]}</Badge>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="py-4 text-center text-sm text-[var(--text-muted)]">No bookings on this day</p>
+                <div className="py-8 text-center text-xs font-medium text-[var(--text-muted)]">
+                  No ritual bookings scheduled for {formatDate(date)}.
+                </div>
               )}
             </Card>
 
-            <Card>
-              <h2 className="mb-1 font-bold">Slot availability</h2>
-              <p className="mb-3 text-xs text-[var(--text-muted)]">Based on appointment length. Longer pujas need more free time after the start.</p>
+            <Card className="space-y-4 p-5 sm:p-6 shadow-sm">
+              <div className="border-b border-[var(--border-color)] pb-3">
+                <h2 className="font-heading font-bold text-lg text-[var(--text-primary)]">Live Slot Availability</h2>
+                <p className="mt-0.5 text-xs font-medium text-[var(--text-secondary)]">
+                  Green indicates active available booking slots. Cross indicates booked, buffered or blocked slots.
+                </p>
+              </div>
               {view.slots.length ? (
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
                   {view.slots.map((s) => (
                     <div
                       key={s.startTime}
-                      className={`rounded-lg border px-2 py-1.5 text-center text-xs font-semibold ${
-                        s.available ? 'border-green-500/40 text-green-700 dark:text-green-400' : 'border-[var(--border-color)] text-[var(--text-muted)] line-through'
+                      className={`rounded-xl border px-2.5 py-2 text-center text-xs font-bold transition shadow-2xs ${
+                        s.available
+                          ? 'border-green-500/40 bg-green-500/10 text-green-800 dark:text-green-300'
+                          : 'border-[var(--border-color)] bg-[var(--bg-surface)] text-[var(--text-muted)] line-through opacity-60'
                       }`}
                     >
                       {formatTime(s.startTime)}
@@ -144,42 +198,52 @@ export function ScheduleTab() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-[var(--text-muted)]">{view.dayAvailability || 'No slots on this day'}</p>
+                <p className="py-4 text-center text-xs font-medium text-[var(--text-muted)]">{view.dayAvailability || 'No slots configured on this day'}</p>
               )}
             </Card>
           </div>
 
-          <div className="space-y-4">
-            <Card>
-              <h2 className="font-bold">Day off</h2>
-              <p className="mb-3 mt-1 text-sm text-[var(--text-muted)]">
-                {isDayOff ? 'This whole day is closed for new bookings.' : 'Close the whole day (travel, festival, personal).'}
+          <div className="space-y-5">
+            <Card className="space-y-3 p-5 sm:p-6 shadow-sm">
+              <h2 className="font-heading font-bold text-base text-[var(--text-primary)]">Full Day Off / Closure</h2>
+              <p className="text-xs font-medium text-[var(--text-secondary)]">
+                {isDayOff
+                  ? 'This entire day is marked as closed. No new ritual slots will be offered in the app.'
+                  : 'Close this whole day for travel, temple festival duty, or personal reasons.'}
               </p>
-              <Button variant={isDayOff ? 'outline' : 'danger'} loading={busy === 'day'} onClick={toggleDayOff} className="w-full">
-                {isDayOff ? 'Open this day' : 'Mark whole day off'}
+              <Button
+                variant={isDayOff ? 'outline' : 'danger'}
+                loading={busy === 'day'}
+                onClick={toggleDayOff}
+                className="w-full font-bold text-xs py-2.5"
+              >
+                {isDayOff ? 'Re-open this Day for Bookings' : 'Mark Whole Day as Off'}
               </Button>
             </Card>
 
-            <Card>
-              <h2 className="mb-3 font-bold">Block time</h2>
-              <div className="grid grid-cols-2 gap-2">
-                <Input label="From" type="time" value={block.startTime} onChange={(e) => setBlock({ ...block, startTime: e.target.value })} />
-                <Input label="To" type="time" value={block.endTime} onChange={(e) => setBlock({ ...block, endTime: e.target.value })} />
+            <Card className="space-y-4 p-5 sm:p-6 shadow-sm">
+              <h2 className="font-heading font-bold text-base text-[var(--text-primary)] border-b border-[var(--border-color)] pb-2.5">
+                Block Specific Time Interval
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="From Time" type="time" value={block.startTime} onChange={(e) => setBlock({ ...block, startTime: e.target.value })} />
+                <Input label="To Time" type="time" value={block.endTime} onChange={(e) => setBlock({ ...block, endTime: e.target.value })} />
               </div>
-              <Input className="mt-2" label="Reason" hint="(private)" value={block.reason} onChange={(e) => setBlock({ ...block, reason: e.target.value })} />
-              <Button className="mt-3 w-full" loading={busy === 'block'} onClick={addBlock}>
-                Block this time
+              <Input label="Reason (Private Note)" placeholder="e.g. Personal sankalp, lunch break" value={block.reason} onChange={(e) => setBlock({ ...block, reason: e.target.value })} />
+              <Button className="w-full font-bold text-xs py-2.5" loading={busy === 'block'} onClick={addBlock}>
+                Block This Time Slot
               </Button>
 
               {view.blocks.length ? (
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 space-y-2 border-t border-[var(--border-color)] pt-3">
+                  <h4 className="text-xs font-bold text-[var(--text-secondary)]">Currently Blocked Intervals:</h4>
                   {view.blocks.map((b) => (
-                    <div key={b.group} className="flex items-center justify-between rounded-lg border border-[var(--border-color)] px-3 py-2 text-sm">
+                    <div key={b.group} className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] px-3 py-2 text-xs shadow-2xs">
                       <div>
-                        <p className="font-semibold">
+                        <p className="font-bold text-[var(--text-primary)]">
                           {formatTime(b.blocks[0])} - {formatTime(endOf(b.blocks[b.blocks.length - 1]))}
                         </p>
-                        {b.reason ? <p className="text-xs text-[var(--text-muted)]">{b.reason}</p> : null}
+                        {b.reason ? <p className="text-[11px] text-[var(--text-muted)] italic">{b.reason}</p> : null}
                       </div>
                       <button onClick={() => removeBlock(b.group)} disabled={busy === b.group} className="rounded p-1.5 hover:bg-[var(--bg-hover)]" aria-label="Remove block">
                         <Trash2 className="h-4 w-4 text-[var(--red)]" />

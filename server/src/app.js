@@ -16,7 +16,14 @@ export const createApp = () => {
   app.use(
     cors({
       origin: (origin, callback) => {
-        if (!origin || config.clientOrigins.includes(origin) || !config.isProduction) return callback(null, true);
+        if (
+          !origin ||
+          config.clientOrigins.includes(origin) ||
+          !config.isProduction ||
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+        ) {
+          return callback(null, true);
+        }
         callback(null, false);
       },
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

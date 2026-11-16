@@ -99,11 +99,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#2A170F',
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: '#786B60',
     marginTop: 0.5,
   },
@@ -118,10 +118,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EFE7DD',
     padding: 14,
-    shadowColor: '#2A170F',
-    shadowOpacity: 0.05,
+    shadowColor: '#382016',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 1,
     justifyContent: 'space-between',
   },
   vratTopRow: {
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
   },
   tithiText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#C65D24',
   },
   countdownPill: {
@@ -155,12 +156,12 @@ const styles = StyleSheet.create({
   },
   countdownText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#15803D',
   },
   vratName: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#2A170F',
   },
   vratDate: {

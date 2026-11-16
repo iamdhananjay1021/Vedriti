@@ -12,7 +12,7 @@ import {
   BookOpen,
 } from 'lucide-react-native';
 import { THEME } from '../../constants/theme';
-import { RADIUS, SPACE } from '../../constants/ui';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Props {
   onBookPujaPress: () => void;
@@ -35,11 +35,13 @@ export const QuickActions: React.FC<Props> = ({
   onRashifalPress,
   onAartiPress,
 }) => {
+  const { t } = useLanguage();
+
   const actions = [
     {
       id: 'mandir',
-      label: 'दैनिक मंदिर',
-      sub: 'दीप प्रज्ज्वलन',
+      label: t.qaMandir,
+      sub: t.qaMandirSub,
       icon: Flame,
       tint: '#FDF2E9',
       color: '#EA580C',
@@ -47,8 +49,8 @@ export const QuickActions: React.FC<Props> = ({
     },
     {
       id: 'japa',
-      label: 'रुद्राक्ष माला',
-      sub: '108 मन्त्र जप',
+      label: t.qaJapa,
+      sub: t.qaJapaSub,
       icon: Sparkles,
       tint: '#FEF3C7',
       color: '#D97706',
@@ -56,8 +58,8 @@ export const QuickActions: React.FC<Props> = ({
     },
     {
       id: 'puja',
-      label: 'पूजा बुकिंग',
-      sub: 'ऑनलाइन / घर पर',
+      label: t.qaPuja,
+      sub: t.qaPujaSub,
       icon: Landmark,
       tint: '#FDEBDD',
       color: THEME.colors.primarySaffron,
@@ -65,8 +67,8 @@ export const QuickActions: React.FC<Props> = ({
     },
     {
       id: 'appointment',
-      label: 'पंडित परामर्श',
-      sub: 'फोन / वीडियो कॉल',
+      label: t.qaPandit,
+      sub: t.qaPanditSub,
       icon: CalendarClock,
       tint: '#E6F4EA',
       color: '#15803D',
@@ -74,8 +76,8 @@ export const QuickActions: React.FC<Props> = ({
     },
     {
       id: 'kundli',
-      label: 'जन्म कुंडली',
-      sub: 'दोष व उपाय',
+      label: t.qaKundli,
+      sub: t.qaKundliSub,
       icon: ScrollText,
       tint: '#EEE9FB',
       color: '#6D4FD1',
@@ -83,8 +85,8 @@ export const QuickActions: React.FC<Props> = ({
     },
     {
       id: 'rashifal',
-      label: 'दैनिक राशिफल',
-      sub: '12 राशियां',
+      label: t.qaRashifal,
+      sub: t.qaRashifalSub,
       icon: Compass,
       tint: '#E0F2FE',
       color: '#0284C7',
@@ -92,8 +94,8 @@ export const QuickActions: React.FC<Props> = ({
     },
     {
       id: 'aarti',
-      label: 'आरती संग्रह',
-      sub: 'चालीसा व स्तुति',
+      label: t.qaAarti,
+      sub: t.qaAartiSub,
       icon: BookOpen,
       tint: '#FCE7F3',
       color: '#DB2777',
@@ -101,8 +103,8 @@ export const QuickActions: React.FC<Props> = ({
     },
     {
       id: 'store',
-      label: 'पूजा सामग्री',
-      sub: 'शुद्ध किट व हवन',
+      label: t.qaStore,
+      sub: t.qaStoreSub,
       icon: Package,
       tint: '#FFF1CC',
       color: '#B7791F',
@@ -115,7 +117,7 @@ export const QuickActions: React.FC<Props> = ({
       {actions.map(({ id, label, icon: Icon, tint, color, onPress }, i) => (
         <Animated.View
           key={id}
-          entering={FadeInUp.delay(80 + i * 40).duration(380)}
+          entering={FadeInUp.delay(60 + i * 35).duration(350)}
           style={styles.cell}
         >
           <TouchableOpacity
@@ -160,14 +162,17 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2A170F',
-    shadowOpacity: 0.06,
-    shadowRadius: 5,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+    shadowColor: '#382016',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   label: {
-    fontSize: 11.5,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
     color: THEME.colors.heading,
     textAlign: 'center',
   },

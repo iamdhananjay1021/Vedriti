@@ -20,8 +20,8 @@ export const GeetaSuvicharCard: React.FC = () => {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#FFF9EE', '#FDF2DB']}
-        style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
+        colors={['#FFFFFF', '#FAF5EC']}
+        style={[StyleSheet.absoluteFill, { borderRadius: 18 }]}
       />
       <View style={styles.borderBox}>
         {/* Header */}
@@ -39,7 +39,7 @@ export const GeetaSuvicharCard: React.FC = () => {
           </View>
 
           <TouchableOpacity onPress={handleShare} style={styles.shareBtn} activeOpacity={0.8}>
-            <Share2 size={15} color="#C65D24" />
+            <Share2 size={14} color="#C65D24" />
             <Text style={styles.shareText}>शेयर</Text>
           </TouchableOpacity>
         </View>
@@ -68,17 +68,18 @@ export const GeetaSuvicharCard: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#C65D24',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#382016',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
   borderBox: {
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#F3DCB0',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#EFE1CE',
     padding: 16,
   },
   headerRow: {
@@ -103,11 +104,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#2A170F',
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: '#8C5A24',
     marginTop: 0.5,
   },
@@ -118,13 +119,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#EFE2CE',
   },
   shareText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#C65D24',
   },
   sanskritBox: {

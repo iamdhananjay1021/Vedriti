@@ -335,3 +335,14 @@ export interface SamuhikEnrollInput {
   tierId: string;
   paymentMethod: 'ONLINE' | 'PAY_LATER';
 }
+
+export interface InboxNotification {
+  id: string;
+  type: 'ANNOUNCEMENT' | 'OFFER' | 'FESTIVAL' | 'REMINDER' | 'NOTICE';
+  title: string;
+  body: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  read: boolean;
+  createdAt: string;
+}

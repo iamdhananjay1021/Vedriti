@@ -53,6 +53,7 @@ export interface OrderItem {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  imageUrl?: string;
 }
 
 export interface Order {
@@ -101,6 +102,9 @@ export interface KundliRequest {
   paymentStatus: PaymentStatus;
   status: KundliStatus;
   panditResponse: string;
+  reportUrl?: string;
+  reportName?: string;
+  attachments?: { url: string; name?: string; contentType?: string }[];
   respondedAt: string | null;
   createdAt: string;
 }
@@ -110,6 +114,9 @@ export interface FamilyMember {
   name: string;
   relation: string;
   gotra: string;
+  dateOfBirth?: string;
+  rashi?: string;
+  nakshatra?: string;
 }
 
 export interface Devotee {
@@ -117,6 +124,7 @@ export interface Devotee {
   phone: string;
   email: string;
   authProvider: 'phone' | 'email';
+  emailVerified?: boolean;
   avatarUrl?: string;
   name: string;
   gender: string;
@@ -125,6 +133,7 @@ export interface Devotee {
   placeOfBirth: string;
   gotra: string;
   rashi: string;
+  nakshatra?: string;
   city: string;
   state: string;
   address: string;
@@ -135,6 +144,21 @@ export interface Devotee {
   isBlocked: boolean;
   lastLoginAt?: string;
   bookingsCount?: number;
+  ordersCount?: number;
+  kundliCount?: number;
+  totalSpent?: number;
+  familyCount?: number;
+}
+
+export interface DevoteesSummary {
+  total: number;
+  active: number;
+  incomplete: number;
+  blocked: number;
+}
+
+export interface DevoteesListResponse extends Paged<Devotee> {
+  summary?: DevoteesSummary;
 }
 
 export interface PujaPackage {
@@ -255,6 +279,25 @@ export interface Banner {
   sortOrder: number;
 }
 
+export interface PanchangData {
+  date: string;
+  vikramSamvat: string;
+  shakaSamvat: string;
+  month: string;
+  paksha: string;
+  tithi: string;
+  nakshatra: string;
+  yoga: string;
+  karana: string;
+  abhijitMuhurat: string;
+  isAbhijitActiveNow: boolean;
+  rahuKaal: string;
+  sunrise: string;
+  sunset: string;
+  moonrise: string;
+  auspiciousMessage: string;
+}
+
 export interface Stats {
   today: string;
   todaysBookings: number;
@@ -264,9 +307,28 @@ export interface Stats {
   openKundli: number;
   totalUsers: number;
   newUsersThisMonth: number;
-  revenue: { total: number; month: number; bookings: number; orders: number; kundli: number };
+  activeUsers?: number;
+  totalPujas?: number;
+  totalProducts?: number;
+  revenue: {
+    total: number;
+    month: number;
+    today?: number;
+    bookings: number;
+    orders: number;
+    kundli: number;
+    bookingsMonth?: number;
+    ordersMonth?: number;
+    kundliMonth?: number;
+    bookingsToday?: number;
+    ordersToday?: number;
+    kundliToday?: number;
+  };
   nextBookings: Booking[];
-  lowStock: { _id: string; name: string; stockQuantity: number }[];
+  todaysSchedule?: Booking[];
+  pendingKundlis?: KundliRequest[];
+  recentOrders?: Order[];
+  lowStock: { _id: string; name: string; stockQuantity: number; price?: number }[];
 }
 
 export interface DayView {
@@ -278,9 +340,240 @@ export interface DayView {
   slots: { startTime: string; endTime: string; label: string; available: boolean }[];
 }
 
+export interface DevoteeStats {
+  totalSpent: number;
+  bookingsCount: number;
+  completedBookings: number;
+  activeBookings: number;
+  ordersCount: number;
+  kundliCount: number;
+  familyCount: number;
+}
+
 export interface UserDetail {
   user: Devotee;
+  stats?: DevoteeStats;
   bookings: Booking[];
   orders: Order[];
   kundli: KundliRequest[];
+}
+
+export interface ChatSessionItem {
+  id: string;
+  sessionId: string;
+  userPhone: string;
+  title: string;
+  category: string;
+  devoteeContext: {
+    name?: string;
+    gotra?: string;
+    rashi?: string;
+    nakshatra?: string;
+    city?: string;
+  };
+  messageCount: number;
+  lastInteractionAt: string;
+  createdAt: string;
+}
+
+export interface ChatMessageItem {
+  id: string;
+  sender: 'user' | 'ai' | 'acharya';
+  text: string;
+  sanskritVerse?: string;
+  shastraReference?: string;
+  remedy?: string;
+  action?: { type: string; title?: string; targetId?: string };
+  followUps?: string[];
+  createdAt: string;
+}
+
+export interface StaffMember {
+  id?: string;
+  _id?: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: 'super_admin' | 'admin' | 'astrologer' | 'store_manager';
+  isActive: boolean;
+  createdAt?: string;
+  lastLoginAt?: string;
+}
+
+export interface CouponItem {
+  _id?: string;
+  id?: string;
+  code: string;
+  title: string;
+  description: string;
+  discountType: 'PERCENTAGE' | 'FLAT';
+  discountValue: number;
+  minOrderValue: number;
+  maxDiscount: number;
+  applicableTo: 'ALL' | 'PUJA' | 'STORE' | 'KUNDLI';
+  validFrom: string;
+  validTill: string;
+  usageLimit: number;
+  usedCount: number;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+export interface AnnouncementItem {
+  _id?: string;
+  id?: string;
+  title: string;
+  message: string;
+  category: 'FESTIVAL' | 'PUJA_ALERT' | 'MUHURAT' | 'TEMPLE_NOTICE';
+  priority: 'NORMAL' | 'HIGH' | 'URGENT';
+  actionType: 'PUJAS' | 'STORE' | 'KUNDLI' | 'NONE';
+  actionRef: string;
+  actionLabel: string;
+  startsOn: string;
+  endsOn: string;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+export interface SamuhikPujaTier {
+  id: string;
+  name: string;
+  dakshina: number;
+  maxFamilyMembers: number;
+  prasadIncluded: boolean;
+  description?: string;
+}
+
+export interface SamuhikPujaItem {
+  _id?: string;
+  id?: string;
+  slug: string;
+  title: string;
+  subtitle?: string;
+  deity: string;
+  templeVenue: string;
+  eventDate: string;
+  muhuratTime: string;
+  imageUrl?: string;
+  description?: string;
+  benefits?: string[];
+  vidhiInclusions?: string[];
+  tiers: SamuhikPujaTier[];
+  maxDevotees: number;
+  enrolledCount: number;
+  status: 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  sankalpVideoUrl?: string;
+  sankalpPhotos?: string[];
+  isFeatured: boolean;
+  createdAt?: string;
+}
+
+export interface SamuhikBookingItem {
+  _id?: string;
+  id?: string;
+  bookingId: string;
+  samuhikPujaId: string;
+  userId: string;
+  devoteeName: string;
+  phone: string;
+  gotra: string;
+  rashi?: string;
+  familyMembers?: { name: string; relation: string }[];
+  sankalpWish?: string;
+  tierId: string;
+  tierName: string;
+  amount: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  status: string;
+  createdAt: string;
+}
+
+export type BroadcastType = 'ANNOUNCEMENT' | 'OFFER' | 'FESTIVAL' | 'REMINDER' | 'NOTICE';
+export type BroadcastChannel = 'EMAIL' | 'SMS' | 'INAPP';
+export type BroadcastStatus = 'DRAFT' | 'SCHEDULED' | 'SENDING' | 'COMPLETED' | 'CANCELLED';
+export type TriState = 'any' | 'yes' | 'no';
+
+export interface BroadcastAudience {
+  mode: 'ALL' | 'SEGMENT' | 'CUSTOM';
+  cities: string[];
+  states: string[];
+  gender: 'any' | 'MALE' | 'FEMALE' | 'OTHER';
+  profileCompleted: TriState;
+  hasBooking: TriState;
+  hasOrder: TriState;
+  joinedWithinDays: number;
+  inactiveForDays: number;
+  emails: string[];
+  phones: string[];
+}
+
+export interface DeliveryCounts {
+  PENDING: number;
+  SENT: number;
+  FAILED: number;
+  SKIPPED: number;
+}
+
+export interface BroadcastItem {
+  id: string;
+  name: string;
+  type: BroadcastType;
+  channels: BroadcastChannel[];
+  subject: string;
+  body: string;
+  smsText: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  audience: BroadcastAudience;
+  status: BroadcastStatus;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  pausedReason: string;
+  recipientCount: number;
+  createdBy: string;
+  createdAt: string;
+  stats: Partial<Record<BroadcastChannel, DeliveryCounts>>;
+  problems?: { channel: BroadcastChannel; to: string; name: string; status: 'FAILED' | 'SKIPPED'; error: string }[];
+}
+
+export interface BroadcastTemplate {
+  id: string;
+  name: string;
+  type: BroadcastType;
+  subject: string;
+  body: string;
+  smsText: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  isSystem: boolean;
+}
+
+export interface BroadcastStatusInfo {
+  email: { enabled: boolean; dailyLimit: number; note: string };
+  sms: { enabled: boolean; note: string };
+  variables: string[];
+}
+
+export interface AudiencePreview {
+  total: number;
+  emailReachable: number;
+  smsReachable: number;
+  inAppReachable: number;
+  optedOut: number;
+  sample: { name: string; email: string; phone: string }[];
+}
+
+export interface BroadcastInput {
+  name: string;
+  type: BroadcastType;
+  channels: BroadcastChannel[];
+  subject: string;
+  body: string;
+  smsText: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  audience: BroadcastAudience;
+  schedule: { mode: 'draft' | 'now' | 'later'; at?: string };
 }

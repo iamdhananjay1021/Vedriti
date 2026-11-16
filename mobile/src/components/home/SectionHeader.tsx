@@ -29,5 +29,5 @@ const styles = StyleSheet.create({
   text: { flex: 1, paddingRight: SPACE.md },
   title: TYPE.section,
   subtitle: { ...TYPE.caption, marginTop: 2 },
-  action: { fontSize: 13, fontWeight: '800', color: THEME.colors.primarySaffron },
+  action: { fontSize: 12.5, fontWeight: '600', color: THEME.colors.primarySaffron },
 });

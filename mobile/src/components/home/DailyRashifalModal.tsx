@@ -6,15 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
   Share,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { X, Sparkles, Share2, Compass, Award } from 'lucide-react-native';
+import { X, Sparkles, Share2, Compass } from 'lucide-react-native';
 import { RASHI_FORECASTS, RashiForecast } from '../../data/spiritualData';
-
-const { width } = Dimensions.get('window');
+import { THEME } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Props {
   visible: boolean;
@@ -23,14 +22,17 @@ interface Props {
 }
 
 export const DailyRashifalModal: React.FC<Props> = ({ visible, onClose, initialRashiId }) => {
+  const { language } = useLanguage();
   const [selectedRashi, setSelectedRashi] = useState<RashiForecast>(
     RASHI_FORECASTS.find((r) => r.id === initialRashiId) || RASHI_FORECASTS[0]
   );
 
+  const isHi = language === 'hi';
+
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `🔮 ॐ वेदरीति दैनिक राशिफल (${selectedRashi.name} / ${selectedRashi.englishName}) 🔮\n\nआज का फल:\n${selectedRashi.prediction}\n\n🎨 शुभ रंग: ${selectedRashi.luckyColor}\n🔢 शुभ अंक: ${selectedRashi.luckyNumber}\n🪔 आज का उपाय: ${selectedRashi.remedy}\n\nअपनी कुंडली व दैनिक राशिफल देखें वेदरीति ऐप पर: https://vedriti.com`,
+        message: `🔮 ॐ वेदरीति दैनिक राशिफल (${selectedRashi.name} / ${selectedRashi.englishName}) 🔮\n\nआज का फल:\n${selectedRashi.prediction}\n\n🎨 शुभ रंग: ${selectedRashi.luckyColor}\n🔢 शुभ अंक: ${selectedRashi.luckyNumber}\n🪔 आज का उपाय: ${selectedRashi.remedy}\n\nअपनी जन्म कुंडली व दैनिक राशिफल देखें वेदरीति ऐप पर: https://vedriti.com`,
       });
     } catch (e) {
       console.warn('Share error:', e);
@@ -40,28 +42,31 @@ export const DailyRashifalModal: React.FC<Props> = ({ visible, onClose, initialR
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={styles.container}>
+        {/* Serene Sandalwood/Ivory Canvas */}
         <LinearGradient
-          colors={['#170b04', '#2b1206', '#120501']}
+          colors={['#FFFDF9', '#FAF5EC', '#F4EDE2']}
           style={StyleSheet.absoluteFill}
         />
 
-        {/* Top Bar */}
+        {/* Top Header Bar */}
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.8}>
-            <X size={20} color="#FDE68A" />
+          <TouchableOpacity onPress={onClose} style={styles.iconBtn} activeOpacity={0.8}>
+            <X size={18} color="#2A170F" />
           </TouchableOpacity>
 
           <View style={styles.titleBox}>
-            <Text style={styles.title}>दैनिक राशिफल</Text>
-            <Text style={styles.subtitle}>12 राशियों का वैदिक ज्योतिष फल</Text>
+            <Text style={styles.title}>{isHi ? 'दैनिक राशिफल' : 'Daily Horoscope'}</Text>
+            <Text style={styles.subtitle}>
+              {isHi ? '12 राशियों का वैदिक ज्योतिष फल' : 'Vedic astrology forecast for 12 Rashis'}
+            </Text>
           </View>
 
-          <TouchableOpacity onPress={handleShare} style={styles.shareBtn} activeOpacity={0.8}>
-            <Share2 size={18} color="#FDE68A" />
+          <TouchableOpacity onPress={handleShare} style={styles.iconBtn} activeOpacity={0.8}>
+            <Share2 size={17} color="#C65D24" />
           </TouchableOpacity>
         </View>
 
-        {/* 12 Rashis Horizontal Selector */}
+        {/* 12 Rashis Horizontal Scroll Selector */}
         <View style={styles.rashiSelectorWrapper}>
           <ScrollView
             horizontal
@@ -77,9 +82,11 @@ export const DailyRashifalModal: React.FC<Props> = ({ visible, onClose, initialR
                   style={[styles.rashiPill, isSel && styles.rashiPillActive]}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.rashiSymbol}>{r.symbol}</Text>
+                  <Text style={[styles.rashiSymbol, isSel && styles.rashiSymbolActive]}>
+                    {r.symbol}
+                  </Text>
                   <Text style={[styles.rashiPillText, isSel && styles.rashiPillTextActive]}>
-                    {r.name}
+                    {isHi ? r.name : r.englishName}
                   </Text>
                 </TouchableOpacity>
               );
@@ -87,13 +94,15 @@ export const DailyRashifalModal: React.FC<Props> = ({ visible, onClose, initialR
           </ScrollView>
         </View>
 
+        {/* Content Scroll View */}
         <ScrollView
           style={styles.contentScroll}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          {/* Main Rashi Card */}
+          {/* Main Rashi Forecast Card */}
           <View style={styles.card}>
+            {/* Header: Symbol, Name & Element */}
             <View style={styles.cardHead}>
               <View style={styles.rashiBigSymbolBox}>
                 <Text style={styles.rashiBigSymbol}>{selectedRashi.symbol}</Text>
@@ -104,47 +113,55 @@ export const DailyRashifalModal: React.FC<Props> = ({ visible, onClose, initialR
                   <Text style={styles.rashiEngName}>({selectedRashi.englishName})</Text>
                 </View>
                 <View style={styles.elementPill}>
-                  <Compass size={11} color="#F59E0B" />
+                  <Compass size={11} color="#C65D24" />
                   <Text style={styles.elementText}>{selectedRashi.element}</Text>
                 </View>
               </View>
             </View>
 
-            {/* Prediction */}
+            {/* Daily Prediction Box */}
             <View style={styles.predictionBox}>
-              <Text style={styles.predictionLabel}>आज का ग्रह गोचर व फल:</Text>
+              <Text style={styles.predictionLabel}>
+                {isHi ? 'आज का ग्रह गोचर व फल:' : "Today's Planetary Forecast:"}
+              </Text>
               <Text style={styles.predictionText}>{selectedRashi.prediction}</Text>
             </View>
 
-            {/* Lucky Color & Number */}
+            {/* Lucky Color & Number Grid */}
             <View style={styles.luckyRow}>
               <View style={styles.luckyCard}>
-                <Text style={styles.luckyCardLabel}>शुभ रंग</Text>
+                <Text style={styles.luckyCardLabel}>{isHi ? 'शुभ रंग' : 'Lucky Color'}</Text>
                 <Text style={styles.luckyCardVal}>{selectedRashi.luckyColor}</Text>
               </View>
               <View style={styles.luckyCard}>
-                <Text style={styles.luckyCardLabel}>शुभ अंक</Text>
+                <Text style={styles.luckyCardLabel}>{isHi ? 'शुभ अंक' : 'Lucky Number'}</Text>
                 <Text style={styles.luckyCardVal}>{selectedRashi.luckyNumber}</Text>
               </View>
             </View>
 
-            {/* Vedic Astro Remedy */}
+            {/* Vedic Astro Remedy Box */}
             <View style={styles.remedyBox}>
               <View style={styles.remedyHeader}>
-                <Sparkles size={14} color="#F59E0B" />
-                <Text style={styles.remedyTitle}>आज का अचूक वैदिक उपाय</Text>
+                <Sparkles size={14} color="#C65D24" />
+                <Text style={styles.remedyTitle}>
+                  {isHi ? 'आज का अचूक वैदिक उपाय' : 'Vedic Astro Remedy'}
+                </Text>
               </View>
               <Text style={styles.remedyText}>{selectedRashi.remedy}</Text>
             </View>
 
-            {/* Share CTA */}
+            {/* Share CTA Button */}
             <TouchableOpacity onPress={handleShare} style={styles.shareCta} activeOpacity={0.85}>
-              <Share2 size={16} color="#1E1B4B" />
+              <Share2 size={15} color="#FFFFFF" />
               <Text style={styles.shareCtaText}>
-                {selectedRashi.name} राशि का फल मित्रों से साझा करें
+                {isHi
+                  ? `${selectedRashi.name} राशि का फल मित्रों से साझा करें`
+                  : `Share ${selectedRashi.englishName} Forecast with Friends`}
               </Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.bottomSpacer} />
         </ScrollView>
       </View>
     </Modal>
@@ -154,31 +171,26 @@ export const DailyRashifalModal: React.FC<Props> = ({ visible, onClose, initialR
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#120501',
+    backgroundColor: '#FFFDF9',
   },
   topBar: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS === 'ios' ? 52 : 24,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(245, 158, 11, 0.15)',
+    borderBottomColor: '#EFE7DD',
+    backgroundColor: '#FFFFFF',
   },
-  closeBtn: {
+  iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shareBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: '#FAF5ED',
+    borderWidth: 1,
+    borderColor: '#EFE4D2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -187,50 +199,54 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#FEF3C7',
+    fontWeight: '700',
+    color: '#2A170F',
   },
   subtitle: {
     fontSize: 11,
-    color: '#D97706',
+    color: '#786B60',
     marginTop: 1,
   },
   rashiSelectorWrapper: {
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderBottomColor: '#F0E7DD',
+    backgroundColor: '#FFFDF9',
   },
   rashiScroll: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
     gap: 8,
   },
   rashiPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#EBE2D7',
   },
   rashiPillActive: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#D97706',
+    backgroundColor: '#C65D24',
+    borderColor: '#C65D24',
   },
   rashiSymbol: {
     fontSize: 14,
+    color: '#C65D24',
+  },
+  rashiSymbolActive: {
+    color: '#FFFFFF',
   },
   rashiPillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#D1D5DB',
+    color: '#554A41',
   },
   rashiPillTextActive: {
-    color: '#1E1B4B',
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   contentScroll: {
     flex: 1,
@@ -239,11 +255,16 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   card: {
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(245, 158, 11, 0.28)',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EBE3D8',
     padding: 18,
+    shadowColor: '#382016',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 1,
   },
   cardHead: {
     flexDirection: 'row',
@@ -252,20 +273,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(245, 158, 11, 0.15)',
+    borderBottomColor: '#F5EEE6',
   },
   rashiBigSymbolBox: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FEF3EB',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#F5DCB5',
   },
   rashiBigSymbol: {
-    fontSize: 28,
+    fontSize: 24,
+    color: '#C65D24',
   },
   rashiHeadInfo: {
     flex: 1,
@@ -277,106 +299,116 @@ const styles = StyleSheet.create({
   },
   rashiName: {
     fontSize: 20,
-    fontWeight: '900',
-    color: '#FEF3C7',
+    fontWeight: '700',
+    color: '#2A170F',
   },
   rashiEngName: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: '#786B60',
+    fontWeight: '500',
   },
   elementPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
     alignSelf: 'flex-start',
+    backgroundColor: '#FAF5ED',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#F0E5D4',
     marginTop: 4,
   },
   elementText: {
-    fontSize: 10,
-    color: '#FDE68A',
+    fontSize: 11,
+    color: '#8C5A24',
     fontWeight: '600',
   },
   predictionBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    backgroundColor: '#FAF7F2',
     borderRadius: 14,
     padding: 14,
+    borderWidth: 1,
+    borderColor: '#F0E8DE',
     marginBottom: 14,
   },
   predictionLabel: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: '#C65D24',
     marginBottom: 6,
   },
   predictionText: {
-    fontSize: 14,
-    color: '#FEF3C7',
-    lineHeight: 22,
+    fontSize: 13,
+    color: '#3C2E24',
+    lineHeight: 20,
+    fontWeight: '400',
   },
   luckyRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     marginBottom: 14,
   },
   luckyCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 14,
+    backgroundColor: '#FAF7F2',
+    borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#F0E8DE',
   },
   luckyCardLabel: {
-    fontSize: 10,
-    color: '#9CA3AF',
+    fontSize: 10.5,
+    color: '#786B60',
+    fontWeight: '600',
   },
   luckyCardVal: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#FEF3C7',
-    marginTop: 2,
+    fontWeight: '700',
+    color: '#2A170F',
+    marginTop: 3,
   },
   remedyBox: {
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    backgroundColor: '#FEF3EB',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
     padding: 14,
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F5DDC7',
+    marginBottom: 18,
   },
   remedyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   remedyTitle: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#F59E0B',
+    fontWeight: '700',
+    color: '#C65D24',
   },
   remedyText: {
-    fontSize: 12,
-    color: '#FDE68A',
+    fontSize: 12.5,
+    color: '#5C2D10',
     lineHeight: 18,
+    fontWeight: '500',
   },
   shareCta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#F59E0B',
-    paddingVertical: 12,
+    gap: 7,
+    backgroundColor: '#C65D24',
     borderRadius: 14,
+    paddingVertical: 13,
   },
   shareCtaText: {
+    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '800',
-    color: '#1E1B4B',
+    fontWeight: '700',
+  },
+  bottomSpacer: {
+    height: 32,
   },
 });
-

@@ -1,22 +1,53 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Constants from 'expo-constants';
-import { Award, Camera, CalendarCheck, ChevronRight, Flame, LogOut, MessageCircle, Pencil, Phone, Plus, ScrollText, ShieldCheck, ShoppingBag, Sparkles, Trash2, UserRound, Video } from 'lucide-react-native';
+import {
+  Calendar,
+  CalendarCheck,
+  Camera,
+  ChevronRight,
+  Clock,
+  Compass,
+  Flame,
+  HelpCircle,
+  LogOut,
+  MapPin,
+  MessageCircle,
+  Pencil,
+  Phone,
+  Plus,
+  ScrollText,
+  ShieldCheck,
+  ShoppingBag,
+  Sparkles,
+  Trash2,
+  Truck,
+  UserRound,
+  Users,
+  Video,
+} from 'lucide-react-native';
 import { AppBackground } from '../components/common/AppBackground';
-import { AppHeader } from '../components/common/AppHeader';
 import { Avatar } from '../components/common/Avatar';
 import { Button, Card, EmptyState, Field, StatusPill } from '../components/ui';
 import { KeyboardAwareScrollView } from '../components/ui/KeyboardAwareScrollView';
 import { THEME } from '../constants/theme';
-import { RADIUS, SPACE, TYPE } from '../constants/ui';
+import { RADIUS, SPACE } from '../constants/ui';
 import { useAuth } from '../context/AuthContext';
 import { useAvatarPicker } from '../hooks/useAvatarPicker';
 import { api, PaymentRefType } from '../services/api';
 import { openPayment } from '../services/payment';
 import type { Booking, KundliRequest, Order } from '../types/api';
 import { WEBSITE_URL } from '../config/api';
-import { profileCompleteness } from '../utils/profile';
 import {
   BOOKING_STATUS_LABELS,
   formatDate,
@@ -48,48 +79,37 @@ const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: 'family', label: 'Family' },
 ];
 
-const ProgressBar: React.FC<{ percent: number }> = ({ percent }) => (
-  <View style={styles.progressTrack}>
-    <View style={[styles.progressFill, { width: `${percent}%` }]} />
-  </View>
-);
+const POPULAR_RELATIONS = ['Wife', 'Husband', 'Son', 'Daughter', 'Mother', 'Father'];
 
-const SegmentedTabs: React.FC<{ value: AccountSection; onChange: (v: AccountSection) => void }> = ({ value, onChange }) => (
-  <View style={styles.tabs}>
-    {SECTIONS.map((s) => (
-      <TouchableOpacity
-        key={s.id}
-        style={[styles.tab, value === s.id && styles.tabActive]}
-        onPress={() => onChange(s.id)}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: value === s.id }}
-      >
-        <Text style={[styles.tabText, value === s.id && styles.tabTextActive]}>{s.label}</Text>
-      </TouchableOpacity>
-    ))}
-  </View>
-);
-
-const MenuRow: React.FC<{ icon: React.ReactNode; tint: string; label: string; hint?: string; onPress: () => void; danger?: boolean; last?: boolean }> = ({
-  icon,
-  tint,
-  label,
-  hint,
-  onPress,
-  danger,
-  last,
-}) => (
-  <TouchableOpacity style={[styles.menuRow, !last && styles.menuRowBorder]} onPress={onPress} activeOpacity={0.7} accessibilityRole="button">
-    <View style={[styles.menuIcon, { backgroundColor: tint }]}>{icon}</View>
+const MenuRow: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  onPress: () => void;
+  danger?: boolean;
+  last?: boolean;
+}> = ({ icon, label, hint, onPress, danger, last }) => (
+  <TouchableOpacity
+    style={[styles.menuRow, !last && styles.menuRowBorder]}
+    onPress={onPress}
+    activeOpacity={0.65}
+    accessibilityRole="button"
+  >
+    <View style={styles.menuIconWrap}>{icon}</View>
     <View style={styles.flex}>
       <Text style={[styles.menuText, danger && styles.dangerText]}>{label}</Text>
       {hint ? <Text style={styles.menuHint}>{hint}</Text> : null}
     </View>
-    <ChevronRight size={18} color={THEME.colors.mutedText} />
+    <ChevronRight size={17} color="#9E9185" />
   </TouchableOpacity>
 );
 
-export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSectionChange, onEditProfile, onContactSupport, onNotificationPress }) => {
+export const AccountScreen: React.FC<AccountScreenProps> = ({
+  section,
+  onSectionChange,
+  onEditProfile,
+  onContactSupport,
+}) => {
   const { user, logout, deleteAccount, addFamilyMember, removeFamilyMember, refreshUser } = useAuth();
   const { busy: avatarBusy, openMenu } = useAvatarPicker();
   const [bookings, setBookings] = useState<Booking[] | null>(null);
@@ -99,11 +119,9 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const [member, setMember] = useState({ name: '', relation: '', gotra: '' });
+  const [member, setMember] = useState({ name: '', relation: 'Wife', gotra: '' });
   const [memberErrors, setMemberErrors] = useState<Record<string, string>>({});
   const [savingMember, setSavingMember] = useState(false);
-
-  const { percent, missing } = useMemo(() => profileCompleteness(user), [user]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -126,7 +144,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
     try {
       const paymentUrl = url || (await api.payNow(type, reference)).paymentUrl;
       const ok = await openPayment(paymentUrl, type, reference);
-      if (ok) Alert.alert('Payment successful', 'Thank you! Your payment has been received.');
+      if (ok) Alert.alert('Payment Successful', 'Thank you! Your payment has been received.');
       await loadAll();
     } catch (e) {
       Alert.alert('Payment', e instanceof Error ? e.message : 'Please try again.');
@@ -139,7 +157,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
     Alert.alert(title, message, [
       { text: 'Keep', style: 'cancel' },
       {
-        text: 'Cancel it',
+        text: 'Cancel',
         style: 'destructive',
         onPress: async () => {
           setBusyId(id);
@@ -158,14 +176,22 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
 
   const saveMember = async () => {
     const next: Record<string, string> = {};
-    if (member.name.trim().length < 2) next.name = 'Name is required';
-    if (member.relation.trim().length < 2) next.relation = 'Relation is required';
+    if (member.name.trim().length < 2) next.name = 'Please enter member name';
+    if (!member.relation.trim()) next.relation = 'Relation is required';
     setMemberErrors(next);
     if (Object.keys(next).length) return;
     setSavingMember(true);
     try {
-      await addFamilyMember({ name: member.name.trim(), relation: member.relation.trim(), gotra: member.gotra.trim(), dateOfBirth: '', rashi: '', nakshatra: '' });
-      setMember({ name: '', relation: '', gotra: '' });
+      await addFamilyMember({
+        name: member.name.trim(),
+        relation: member.relation.trim(),
+        gotra: member.gotra.trim() || user?.gotra || 'Kashyap',
+        dateOfBirth: '',
+        rashi: '',
+        nakshatra: '',
+      });
+      setMember({ name: '', relation: 'Wife', gotra: '' });
+      Alert.alert('Member Added', `${member.name.trim()} added to your family sankalp list.`);
     } catch (e) {
       Alert.alert('Could not add', e instanceof Error ? e.message : 'Please try again.');
     } finally {
@@ -174,318 +200,593 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
   };
 
   const confirmRemoveMember = (id: string, name: string) => {
-    Alert.alert('Remove member?', `${name} will be removed from your family list.`, [
+    Alert.alert('Remove Member?', `Remove ${name} from your family sankalp list?`, [
       { text: 'Keep', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => removeFamilyMember(id).catch((e) => Alert.alert('Could not remove', e.message)) },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => removeFamilyMember(id).catch((e) => Alert.alert('Error', e.message)),
+      },
     ]);
   };
 
   const confirmDelete = () => {
-    Alert.alert('Delete account?', 'Your profile, photo, family members and saved details will be permanently deleted. Upcoming bookings will be cancelled. This cannot be undone.', [
-      { text: 'Keep account', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteAccount().catch((e) => Alert.alert('Could not delete', e.message)) },
-    ]);
+    Alert.alert(
+      'Delete Account?',
+      'Your profile, family members, and puja records will be permanently removed. Upcoming bookings will be cancelled.',
+      [
+        { text: 'Keep Account', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteAccount().catch((e) => Alert.alert('Could not delete', e.message)),
+        },
+      ]
+    );
   };
 
   const confirmLogout = () => {
-    Alert.alert('Logout?', 'You will need to login again to book.', [
+    Alert.alert('Logout?', 'You will need to login again to manage your bookings and rituals.', [
       { text: 'Stay', style: 'cancel' },
       { text: 'Logout', style: 'destructive', onPress: logout },
     ]);
   };
 
-  const renderBooking = (b: Booking, i: number) => {
+  const renderBooking = (b: Booking) => {
     const active = b.status === 'PENDING' || b.status === 'CONFIRMED';
     const unpaid = active && b.paymentStatus !== 'PAID' && b.amount > 0;
+    const isConfirmed = b.status === 'CONFIRMED';
+    const isCancelled = b.status === 'CANCELLED';
+
     return (
-      <View key={b.id}>
-        <Card style={styles.item}>
-          <View style={styles.itemHead}>
+      <View key={b.id} style={[styles.flatItemCard, isConfirmed && styles.itemConfirmed, isCancelled && styles.itemCancelled]}>
+        <View style={styles.itemHeader}>
+          <View style={styles.flex}>
+            <Text style={styles.bookingRef}>#{b.bookingId} • {MODE_LABELS[b.mode]}</Text>
             <Text style={styles.itemTitle}>{b.title}</Text>
-            <StatusPill label={BOOKING_STATUS_LABELS[b.status]} colors={STATUS_COLORS[b.status]} />
           </View>
-          <Text style={styles.itemMeta}>
+          <StatusPill label={BOOKING_STATUS_LABELS[b.status]} colors={STATUS_COLORS[b.status]} />
+        </View>
+
+        <View style={styles.itemMetaRow}>
+          <Text style={styles.itemMetaText}>
             {formatDate(b.date)} • {formatTime(b.startTime)} - {formatTime(b.endTime)}
           </Text>
-          <Text style={styles.itemMeta}>
-            {MODE_LABELS[b.mode]}
-            {b.packageName ? ` • ${b.packageName}` : ''}
+          {b.packageName ? <Text style={styles.itemMetaTag}>{b.packageName}</Text> : null}
+        </View>
+
+        <View style={styles.priceStrip}>
+          <Text style={styles.priceAmount}>{rupees(b.amount)}</Text>
+          <Text style={styles.priceStatus}>
+            {b.paymentStatus === 'PAID'
+              ? 'Paid'
+              : b.paymentMethod === 'ONLINE'
+              ? 'Payment Pending'
+              : 'Pay After Puja'}
           </Text>
-          <Text style={styles.itemMeta}>
-            {b.bookingId} • {rupees(b.amount)} • {PAYMENT_STATUS_LABELS[b.paymentStatus]}
-          </Text>
-          {b.panditNote ? <Text style={styles.note}>Pandit Ji: {b.panditNote}</Text> : null}
-          {b.status === 'CANCELLED' && b.cancelReason ? <Text style={styles.cancelNote}>{b.cancelReason}</Text> : null}
-          {b.meetingLink ? <Button title="Join video call" icon={<Video size={16} color="#FFF" />} onPress={() => Linking.openURL(b.meetingLink)} style={styles.action} /> : null}
-          <View style={styles.actions}>
-            {unpaid ? <Button title="Pay now" onPress={() => payFor('booking', b.bookingId, b.paymentUrl)} loading={busyId === b.bookingId} style={styles.flexBtn} /> : null}
-            {active ? (
-              <Button
-                title="Cancel"
-                variant="outline"
-                disabled={busyId === b.bookingId}
-                onPress={() => confirmCancel('Cancel booking?', `${b.title} on ${formatDate(b.date)} at ${formatTime(b.startTime)} will be cancelled.`, () => api.cancelBooking(b.bookingId), b.bookingId)}
-                style={styles.flexBtn}
-              />
-            ) : null}
+        </View>
+
+        {b.panditNote ? (
+          <View style={styles.panditNoteBox}>
+            <Text style={styles.panditNoteText}>Pandit Ji: {b.panditNote}</Text>
           </View>
-        </Card>
+        ) : null}
+
+        {isCancelled && b.cancelReason ? (
+          <Text style={styles.cancelText}>Reason: {b.cancelReason}</Text>
+        ) : null}
+
+        {b.meetingLink ? (
+          <TouchableOpacity
+            style={styles.videoButton}
+            onPress={() => Linking.openURL(b.meetingLink || '')}
+            activeOpacity={0.8}
+          >
+            <Video size={15} color="#FFFFFF" />
+            <Text style={styles.videoButtonText}>Join Video Call</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        <View style={styles.actionsRow}>
+          {unpaid ? (
+            <Button
+              title="Pay Now"
+              onPress={() => payFor('booking', b.bookingId, b.paymentUrl)}
+              loading={busyId === b.bookingId}
+              style={styles.flexBtn}
+            />
+          ) : null}
+          {active ? (
+            <Button
+              title="Cancel"
+              variant="outline"
+              disabled={busyId === b.bookingId}
+              onPress={() =>
+                confirmCancel(
+                  'Cancel Booking?',
+                  `Cancel "${b.title}" scheduled on ${formatDate(b.date)}?`,
+                  () => api.cancelBooking(b.bookingId),
+                  b.bookingId
+                )
+              }
+              style={styles.flexBtn}
+            />
+          ) : null}
+        </View>
       </View>
     );
   };
 
-  const renderOrder = (o: Order, i: number) => {
+  const renderOrder = (o: Order) => {
     const cancellable = o.status === 'PLACED' || o.status === 'CONFIRMED';
     return (
-      <View key={o.id}>
-        <Card style={styles.item}>
-          <View style={styles.itemHead}>
-            <Text style={styles.itemTitle}>{o.orderId}</Text>
-            <StatusPill label={ORDER_STATUS_LABELS[o.status]} colors={STATUS_COLORS[o.status]} />
+      <View key={o.id} style={styles.flatItemCard}>
+        <View style={styles.itemHeader}>
+          <View style={styles.flex}>
+            <Text style={styles.bookingRef}>Order #{o.orderId}</Text>
+            <Text style={styles.itemMetaText}>{formatDateTime(o.createdAt)}</Text>
           </View>
-          <Text style={styles.itemMeta}>{formatDateTime(o.createdAt)}</Text>
+          <StatusPill label={ORDER_STATUS_LABELS[o.status]} colors={STATUS_COLORS[o.status]} />
+        </View>
+
+        <View style={styles.orderListBox}>
           {o.items.map((item) => (
-            <Text key={item.productId} style={styles.itemMeta}>
-              {item.quantity} × {item.name}
-            </Text>
+            <View key={item.productId} style={styles.orderItemLine}>
+              <Text style={styles.orderItemName} numberOfLines={1}>{item.name}</Text>
+              <Text style={styles.orderItemQty}>×{item.quantity}</Text>
+            </View>
           ))}
-          <Text style={styles.itemMeta}>
-            {rupees(o.totalAmount)} • {o.paymentMethod === 'COD' ? 'Cash on delivery' : PAYMENT_STATUS_LABELS[o.paymentStatus]}
+        </View>
+
+        <View style={styles.priceStrip}>
+          <Text style={styles.priceAmount}>{rupees(o.totalAmount)}</Text>
+          <Text style={styles.priceStatus}>
+            {o.paymentMethod === 'COD' ? 'Cash on Delivery' : PAYMENT_STATUS_LABELS[o.paymentStatus]}
           </Text>
-          {o.trackingNumber ? (
-            <Text style={styles.note}>
-              {o.courierPartner || 'Courier'}: {o.trackingNumber}
-            </Text>
+        </View>
+
+        {o.trackingNumber ? (
+          <Text style={styles.trackingLine}>
+            {o.courierPartner || 'Courier'}: {o.trackingNumber}
+          </Text>
+        ) : null}
+
+        <View style={styles.actionsRow}>
+          {o.paymentUrl ? (
+            <Button
+              title="Pay Now"
+              onPress={() => payFor('order', o.orderId, o.paymentUrl)}
+              loading={busyId === o.orderId}
+              style={styles.flexBtn}
+            />
           ) : null}
-          {o.adminNote ? <Text style={styles.note}>{o.adminNote}</Text> : null}
-          {o.status === 'CANCELLED' && o.cancelReason ? <Text style={styles.cancelNote}>{o.cancelReason}</Text> : null}
-          <View style={styles.actions}>
-            {o.paymentUrl ? <Button title="Pay now" onPress={() => payFor('order', o.orderId, o.paymentUrl)} loading={busyId === o.orderId} style={styles.flexBtn} /> : null}
-            {cancellable ? (
-              <Button
-                title="Cancel"
-                variant="outline"
-                disabled={busyId === o.orderId}
-                onPress={() => confirmCancel('Cancel order?', `Order ${o.orderId} will be cancelled.`, () => api.cancelOrder(o.orderId), o.orderId)}
-                style={styles.flexBtn}
-              />
-            ) : null}
-          </View>
-        </Card>
+          {cancellable ? (
+            <Button
+              title="Cancel Order"
+              variant="outline"
+              disabled={busyId === o.orderId}
+              onPress={() =>
+                confirmCancel(
+                  'Cancel Order?',
+                  `Cancel order #${o.orderId}?`,
+                  () => api.cancelOrder(o.orderId),
+                  o.orderId
+                )
+              }
+              style={styles.flexBtn}
+            />
+          ) : null}
+        </View>
       </View>
     );
   };
 
-  const renderKundli = (k: KundliRequest, i: number) => (
-    <View key={k.id}>
-      <Card style={styles.item}>
-        <View style={styles.itemHead}>
+  const renderKundli = (k: KundliRequest) => (
+    <View key={k.id} style={styles.flatItemCard}>
+      <View style={styles.itemHeader}>
+        <View style={styles.flex}>
+          <Text style={styles.bookingRef}>Inquiry #{k.requestId}</Text>
           <Text style={styles.itemTitle}>{KUNDLI_TYPE_LABELS[k.type]}</Text>
-          <StatusPill label={KUNDLI_STATUS_LABELS[k.status]} colors={STATUS_COLORS[k.status]} />
         </View>
-        <Text style={styles.itemMeta}>
-          {k.primaryPerson.fullName}
-          {k.partnerPerson ? ` & ${k.partnerPerson.fullName}` : ''} • {formatDate(k.primaryPerson.dateOfBirth)}
-        </Text>
-        <Text style={styles.itemMeta}>
-          {k.requestId} • {rupees(k.amount)} • {PAYMENT_STATUS_LABELS[k.paymentStatus]}
-        </Text>
-        {k.questions ? <Text style={styles.itemMeta}>Q: {k.questions}</Text> : null}
-        {k.panditResponse ? (
-          <View style={styles.response}>
-            <Text style={styles.responseTitle}>Pandit Ji&apos;s reply</Text>
-            <Text style={styles.responseText}>{k.panditResponse}</Text>
-            {k.respondedAt ? <Text style={styles.itemMeta}>{formatDateTime(k.respondedAt)}</Text> : null}
-          </View>
-        ) : (
-          <Text style={styles.note}>Pandit Ji&apos;s reply will appear here.</Text>
-        )}
-        {k.paymentUrl || (k.paymentStatus !== 'PAID' && k.amount > 0 && k.status !== 'CLOSED') ? (
-          <Button title="Pay now" onPress={() => payFor('kundli', k.requestId, k.paymentUrl)} loading={busyId === k.requestId} style={styles.action} />
-        ) : null}
-      </Card>
+        <StatusPill label={KUNDLI_STATUS_LABELS[k.status]} colors={STATUS_COLORS[k.status]} />
+      </View>
+
+      <Text style={styles.itemMetaText}>
+        {k.primaryPerson.fullName}
+        {k.partnerPerson ? ` & ${k.partnerPerson.fullName}` : ''} • {formatDate(k.primaryPerson.dateOfBirth)}
+      </Text>
+
+      <View style={styles.priceStrip}>
+        <Text style={styles.priceAmount}>{rupees(k.amount)}</Text>
+        <Text style={styles.priceStatus}>{PAYMENT_STATUS_LABELS[k.paymentStatus]}</Text>
+      </View>
+
+      {k.questions ? (
+        <View style={styles.questionBox}>
+          <Text style={styles.questionText}>&ldquo;{k.questions}&rdquo;</Text>
+        </View>
+      ) : null}
+
+      {k.panditResponse ? (
+        <View style={styles.panditResponseCard}>
+          <Text style={styles.panditResponseHead}>Pandit Ji&apos;s Guidance:</Text>
+          <Text style={styles.panditResponseText}>{k.panditResponse}</Text>
+        </View>
+      ) : (
+        <Text style={styles.awaitingText}>Pandit Ji is analyzing your birth chart.</Text>
+      )}
+
+      {k.paymentUrl || (k.paymentStatus !== 'PAID' && k.amount > 0 && k.status !== 'CLOSED') ? (
+        <Button
+          title="Pay Offering"
+          onPress={() => payFor('kundli', k.requestId, k.paymentUrl)}
+          loading={busyId === k.requestId}
+          style={styles.singleActionBtn}
+        />
+      ) : null}
     </View>
   );
 
   const renderFamily = () => (
-    <View>
-      {user?.familyMembers.length ? (
-        user.familyMembers.map((m, i) => (
-          <View key={m.id}>
-            <Card style={styles.memberRow}>
-              <View style={styles.memberIcon}>
-                <UserRound size={20} color={THEME.colors.primarySaffron} />
-              </View>
-              <View style={styles.flex}>
-                <Text style={styles.itemTitle}>{m.name}</Text>
-                <Text style={styles.itemMeta}>
-                  {m.relation}
-                  {m.gotra ? ` • ${m.gotra}` : ''}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => confirmRemoveMember(m.id, m.name)} accessibilityLabel={`Remove ${m.name}`} style={styles.iconBtn}>
-                <Trash2 size={18} color="#B91C1C" />
-              </TouchableOpacity>
-            </Card>
+    <View style={styles.familyWrapper}>
+      <Text style={styles.blockHeading}>Family Sankalp Members</Text>
+      <Text style={styles.blockSubtitle}>
+        Members included by name and gotra in your puja rituals.
+      </Text>
+
+      {user?.familyMembers?.length ? (
+        user.familyMembers.map((m) => (
+          <View key={m.id} style={styles.memberCard}>
+            <View style={styles.memberAvatar}>
+              <UserRound size={17} color={C.primarySaffron} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.memberName}>{m.name}</Text>
+              <Text style={styles.memberMeta}>
+                {m.relation} • Gotra: {m.gotra || user?.gotra || 'Kashyap'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => confirmRemoveMember(m.id, m.name)}
+              accessibilityLabel={`Remove ${m.name}`}
+              style={styles.deleteBtn}
+            >
+              <Trash2 size={16} color="#DC2626" />
+            </TouchableOpacity>
           </View>
         ))
       ) : (
-        <Text style={styles.muted}>Add family members to include them in your puja sankalp.</Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>No family members added</Text>
+          <Text style={styles.emptySub}>Add members below to include them in puja sankalp.</Text>
+        </View>
       )}
-      <Card style={styles.item}>
-        <Text style={styles.itemTitle}>Add family member</Text>
-        <Field label="Name" required value={member.name} onChangeText={(v) => setMember((s) => ({ ...s, name: v }))} error={memberErrors.name} />
-        <Field label="Relation" required value={member.relation} onChangeText={(v) => setMember((s) => ({ ...s, relation: v }))} placeholder="e.g. Wife, Son, Mother" error={memberErrors.relation} />
-        <Field label="Gotra" value={member.gotra} onChangeText={(v) => setMember((s) => ({ ...s, gotra: v }))} placeholder="Optional" />
-        <Button title="Add member" icon={<Plus size={16} color="#FFF" />} onPress={saveMember} loading={savingMember} />
+
+      <Card style={styles.addMemberBox}>
+        <Text style={styles.addMemberTitle}>Add Family Member</Text>
+
+        <Field
+          label="Full Name *"
+          required
+          value={member.name}
+          onChangeText={(v) => setMember((s) => ({ ...s, name: v }))}
+          error={memberErrors.name}
+          placeholder="e.g. Aarti Pandey"
+        />
+
+        <Text style={styles.fieldLabel}>Select Relation *</Text>
+        <View style={styles.relationsWrap}>
+          {POPULAR_RELATIONS.map((rel) => {
+            const isSelected = member.relation === rel;
+            return (
+              <TouchableOpacity
+                key={rel}
+                onPress={() => setMember((s) => ({ ...s, relation: rel }))}
+                style={[styles.relPill, isSelected && styles.relPillActive]}
+              >
+                <Text style={[styles.relPillText, isSelected && styles.relPillTextActive]}>{rel}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Field
+          label="Gotra"
+          value={member.gotra}
+          onChangeText={(v) => setMember((s) => ({ ...s, gotra: v }))}
+          placeholder={user?.gotra ? `Default: ${user.gotra}` : 'e.g. Garg / Kashyap'}
+        />
+
+        <Button
+          title="Add to Sankalp"
+          icon={<Plus size={15} color="#FFF" />}
+          onPress={saveMember}
+          loading={savingMember}
+          style={styles.addSubmitBtn}
+        />
       </Card>
     </View>
   );
 
   const list = section === 'bookings' ? bookings : section === 'orders' ? orders : section === 'kundli' ? kundli : null;
   const version = Constants.expoConfig?.version ?? '1.0.0';
-  const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '';
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : '2026';
   const location = [user?.city, user?.state].filter(Boolean).join(', ');
 
   return (
     <AppBackground variant="golden">
-      <AppHeader title="My Account" onNotificationPress={onNotificationPress} />
+      {/* SAFE MINIMAL TOP HEADER */}
+      <View style={styles.topHeader}>
+        <Text style={styles.screenTitle}>Your Profile</Text>
+        <Text style={styles.screenSubtitle}>Manage your bookings, rituals & account</Text>
+      </View>
+
       <KeyboardAwareScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={loading && Boolean(bookings)} onRefresh={loadAll} />}
+        refreshControl={<RefreshControl refreshing={loading && Boolean(bookings)} onRefresh={loadAll} tintColor={C.primarySaffron} />}
       >
-        <View>
-          <LinearGradient colors={['#F59A45', '#E4702B', '#CF5A22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-            <View style={styles.heroTop}>
-              <View>
-                <TouchableOpacity onPress={openMenu} activeOpacity={0.85} style={styles.avatarWrap} accessibilityRole="button" accessibilityLabel="Change profile photo">
-                  <Avatar uri={user?.avatarUrl} name={user?.name} size={84} ring />
-                  <View style={styles.cameraBadge}>{avatarBusy ? <ActivityIndicator size="small" color={C.primarySaffron} /> : <Camera size={14} color={C.primarySaffron} />}</View>
+        {/* CLEAN, FLAT DEVOTEE PROFILE CARD (NO SHADOWS, NO UNNECESSARY BADGES) */}
+        <View style={styles.profileSection}>
+          <View style={styles.flatProfileCard}>
+            <View style={styles.profileRow}>
+              <View style={styles.avatarWrap}>
+                <Avatar uri={user?.avatarUrl} name={user?.name} size={68} ring />
+                <TouchableOpacity
+                  onPress={openMenu}
+                  activeOpacity={0.8}
+                  style={styles.cameraIconBtn}
+                  accessibilityLabel="Change photo"
+                >
+                  {avatarBusy ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Camera size={12} color="#FFFFFF" />
+                  )}
                 </TouchableOpacity>
               </View>
-              <View style={styles.heroText}>
-                <Text style={styles.heroName} numberOfLines={1}>
+
+              <View style={styles.userInfoCol}>
+                <Text style={styles.userName} numberOfLines={1}>
                   {user?.name || 'Devotee'}
                 </Text>
-                {user?.phone ? <Text style={styles.heroMeta}>{user.phone}</Text> : null}
-                {user?.email ? (
-                  <Text style={styles.heroMeta} numberOfLines={1}>
-                    {user.email}
-                  </Text>
-                ) : null}
-                <View style={styles.chips}>
-                  {location ? <Text style={styles.chip}>{location}</Text> : null}
-                  {memberSince ? <Text style={styles.chip}>Since {memberSince}</Text> : null}
-                </View>
-              </View>
-            </View>
 
-            <View style={styles.completion}>
-              <View style={styles.completionHead}>
-                <Text style={styles.completionLabel}>Profile {percent}% complete</Text>
-                {percent < 100 ? (
-                  <TouchableOpacity onPress={onEditProfile} hitSlop={8}>
-                    <Text style={styles.completionAction}>Complete</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.doneBadge}>
-                    <ShieldCheck size={12} color="#86EFAC" />
-                    <Text style={styles.doneText}>All set</Text>
-                  </View>
-                )}
-              </View>
-              <ProgressBar percent={percent} />
-              {percent < 100 && missing.length ? (
-                <Text style={styles.completionHint} numberOfLines={2}>
-                  Add {missing.slice(0, 3).join(', ')}
-                  {missing.length > 3 ? ` and ${missing.length - 3} more` : ''}
+                {user?.phone ? <Text style={styles.userPhone}>{user.phone}</Text> : null}
+
+                <Text style={styles.userVedicMeta} numberOfLines={1}>
+                  Gotra: {user?.gotra || 'Kashyap'} {location ? `• ${location}` : ''}
                 </Text>
-              ) : null}
+              </View>
             </View>
 
-            <View style={styles.heroActions}>
-              <TouchableOpacity style={styles.editBtn} onPress={onEditProfile} activeOpacity={0.85} accessibilityRole="button">
-                <Pencil size={15} color={C.primarySaffron} />
-                <Text style={styles.editText}>Edit profile</Text>
+            {/* CLEAN ACTION BUTTONS (NO HEAVY SHADOWS) */}
+            <View style={styles.cardActionsRow}>
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={onEditProfile}
+                activeOpacity={0.8}
+              >
+                <Pencil size={13} color="#FFFFFF" />
+                <Text style={styles.editBtnText}>Edit Profile</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.photoBtn} onPress={openMenu} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Change photo">
-                <Camera size={15} color="#FFF" />
-                <Text style={styles.photoText}>Photo</Text>
+
+              <TouchableOpacity
+                style={styles.photoBtn}
+                onPress={openMenu}
+                activeOpacity={0.8}
+              >
+                <Camera size={13} color={C.primarySaffron} />
+                <Text style={styles.photoBtnText}>Change Photo</Text>
               </TouchableOpacity>
             </View>
-          </LinearGradient>
-        </View>
-
-        {/* Devotee Spiritual Sadhana Record */}
-        <View style={styles.spiritualBanner}>
-          <View style={styles.spiritualCol}>
-            <Flame size={18} color="#EA580C" />
-            <Text style={styles.spiritualNum}>{user?.dailyPujaStreak || 0} दिन</Text>
-            <Text style={styles.spiritualDesc}>नित्य पूजा स्ट्रीक</Text>
-          </View>
-          <View style={styles.spiritualDivider} />
-          <View style={styles.spiritualCol}>
-            <Sparkles size={18} color="#D97706" />
-            <Text style={styles.spiritualNum}>{user?.totalJapaCount || 0}</Text>
-            <Text style={styles.spiritualDesc}>कुल मंत्र जप</Text>
-          </View>
-          <View style={styles.spiritualDivider} />
-          <View style={styles.spiritualCol}>
-            <Award size={18} color="#10B981" />
-            <Text style={styles.spiritualNum}>{user?.totalMalasCompleted || 0}</Text>
-            <Text style={styles.spiritualDesc}>पूर्ण मालाएं</Text>
           </View>
         </View>
 
-        <View style={styles.stats}>
-          {[
-            { id: 'bookings' as const, label: 'Bookings', value: bookings?.length ?? 0, icon: CalendarCheck },
-            { id: 'orders' as const, label: 'Orders', value: orders?.length ?? 0, icon: ShoppingBag },
-            { id: 'kundli' as const, label: 'Kundli', value: kundli?.length ?? 0, icon: ScrollText },
-          ].map(({ id, label, value, icon: Icon }) => (
-            <TouchableOpacity key={id} style={[styles.stat, section === id && styles.statActive]} onPress={() => onSectionChange(id)} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel={`${label}: ${value}`}>
-              <Icon size={18} color={THEME.colors.primarySaffron} />
-              <Text style={styles.statValue}>{value}</Text>
-              <Text style={styles.statLabel}>{label}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* MINIMAL SADHANA COUNTERS (CLEAN 4 STATS, NO BLURRY SHADOWS) */}
+        <View style={styles.sadhanaSection}>
+          <View style={styles.sadhanaCard}>
+            <View style={styles.sadhanaTopBar}>
+              <Text style={styles.sadhanaTitle}>Devotional Journey</Text>
+              <Text style={styles.sadhanaSince}>Member since {memberSince}</Text>
+            </View>
+
+            <View style={styles.sadhanaColsRow}>
+              <View style={styles.sadhanaCol}>
+                <Text style={styles.sadhanaNum}>{user?.dailyPujaStreak || 0}d</Text>
+                <Text style={styles.sadhanaLabel}>Daily Streak</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              <View style={styles.sadhanaCol}>
+                <Text style={styles.sadhanaNum}>{user?.totalJapaCount || 0}</Text>
+                <Text style={styles.sadhanaLabel}>Mantra Japa</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              <View style={styles.sadhanaCol}>
+                <Text style={styles.sadhanaNum}>{user?.totalMalasCompleted || 0}</Text>
+                <Text style={styles.sadhanaLabel}>Malas Done</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              <View style={styles.sadhanaCol}>
+                <Text style={styles.sadhanaNum}>{bookings?.length || 0}</Text>
+                <Text style={styles.sadhanaLabel}>Pujas</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
-        <View>
-          <SegmentedTabs value={section} onChange={onSectionChange} />
+        {/* VEDIC DETAILS (CLEAN 2x2 TILES, NO EXTRA BADGES) */}
+        <View style={styles.vedicSection}>
+          <View style={styles.vedicCard}>
+            <View style={styles.vedicHead}>
+              <Text style={styles.vedicHeadTitle}>Vedic & Sankalp Details</Text>
+              <TouchableOpacity onPress={onEditProfile} hitSlop={6}>
+                <Text style={styles.vedicEditLink}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.vedicGrid}>
+              <View style={styles.vedicBox}>
+                <Text style={styles.vedicBoxLabel}>Gotra</Text>
+                <Text style={styles.vedicBoxValue}>{user?.gotra || 'Kashyap'}</Text>
+              </View>
+
+              <View style={styles.vedicBox}>
+                <Text style={styles.vedicBoxLabel}>Rashi</Text>
+                <Text style={styles.vedicBoxValue}>{user?.rashi || 'Not Set'}</Text>
+              </View>
+
+              <View style={styles.vedicBox}>
+                <Text style={styles.vedicBoxLabel}>Date of Birth</Text>
+                <Text style={styles.vedicBoxValue}>
+                  {user?.dateOfBirth ? formatDate(user.dateOfBirth) : 'Add DOB'}
+                </Text>
+              </View>
+
+              <View style={styles.vedicBox}>
+                <Text style={styles.vedicBoxLabel}>Family Members</Text>
+                <Text style={styles.vedicBoxValue}>
+                  {user?.familyMembers?.length ? `${user.familyMembers.length} Members` : '0 Added'}
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
 
+        {/* CLEAN SEGMENTED TABS (NO LOUD BADGES) */}
+        <View style={styles.tabsWrapper}>
+          <View style={styles.tabsBar}>
+            {SECTIONS.map((s) => {
+              const isSelected = section === s.id;
+              return (
+                <TouchableOpacity
+                  key={s.id}
+                  style={[styles.tabItem, isSelected && styles.tabItemActive]}
+                  onPress={() => onSectionChange(s.id)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.tabItemText, isSelected && styles.tabItemTextActive]}>
+                    {s.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* CONTENT LIST */}
         <View style={styles.listArea}>
-          {error ? <EmptyState title="Could not load" subtitle={error} action={<Button title="Retry" onPress={loadAll} />} /> : null}
-          {!error && loading && !list && section !== 'family' ? <ActivityIndicator color={THEME.colors.primarySaffron} style={styles.loader} /> : null}
-          {!error && section === 'bookings' && bookings ? (bookings.length ? bookings.map(renderBooking) : <EmptyState title="No bookings yet" subtitle="Book a puja or an appointment with Pandit Ji." />) : null}
-          {!error && section === 'orders' && orders ? (orders.length ? orders.map(renderOrder) : <EmptyState title="No orders yet" subtitle="Puja kits you order will appear here." />) : null}
-          {!error && section === 'kundli' && kundli ? (kundli.length ? kundli.map(renderKundli) : <EmptyState title="No kundli requests" subtitle="Send your birth details to Pandit Ji from the Kundli tab." />) : null}
+          {error ? (
+            <EmptyState
+              title="Could not load data"
+              subtitle={error}
+              action={<Button title="Retry" onPress={loadAll} />}
+            />
+          ) : null}
+
+          {!error && loading && !list && section !== 'family' ? (
+            <ActivityIndicator color={C.primarySaffron} style={styles.loader} />
+          ) : null}
+
+          {!error && section === 'bookings' && bookings ? (
+            bookings.length ? (
+              bookings.map(renderBooking)
+            ) : (
+              <EmptyState
+                title="No ritual bookings yet"
+                subtitle="Book a Vedic puja or consultation from the Pujas tab."
+              />
+            )
+          ) : null}
+
+          {!error && section === 'orders' && orders ? (
+            orders.length ? (
+              orders.map(renderOrder)
+            ) : (
+              <EmptyState
+                title="No kit orders yet"
+                subtitle="Spiritual kits you purchase will appear here."
+              />
+            )
+          ) : null}
+
+          {!error && section === 'kundli' && kundli ? (
+            kundli.length ? (
+              kundli.map(renderKundli)
+            ) : (
+              <EmptyState
+                title="No kundli queries yet"
+                subtitle="Send your birth chart details to Pandit Ji for astrological advice."
+              />
+            )
+          ) : null}
+
           {section === 'family' ? renderFamily() : null}
         </View>
 
-        <View>
-          <Text style={styles.groupLabel}>Account</Text>
-          <View style={styles.group}>
-            <MenuRow icon={<Pencil size={18} color="#B7791F" />} tint="#FFF1CC" label="Edit profile" hint="Name, birth details, address" onPress={onEditProfile} />
-            <MenuRow icon={<Camera size={18} color="#6D4FD1" />} tint="#EEE9FB" label="Profile photo" hint={user?.avatarUrl ? 'Change or remove' : 'Add a photo'} onPress={openMenu} last />
+        {/* ACCOUNT SETTINGS & SUPPORT (CLEAN iOS-STYLE GROUP) */}
+        <View style={styles.menuContainer}>
+          <Text style={styles.groupTitle}>Settings & Preferences</Text>
+          <View style={styles.menuBox}>
+            <MenuRow
+              icon={<Pencil size={15} color="#8A4A1C" />}
+              label="Edit Profile Details"
+              hint="Name, birth details & address"
+              onPress={onEditProfile}
+            />
+            <MenuRow
+              icon={<Camera size={15} color="#8A4A1C" />}
+              label="Profile Photo"
+              hint={user?.avatarUrl ? 'Change or remove' : 'Upload photo'}
+              onPress={openMenu}
+              last
+            />
           </View>
 
-          <Text style={styles.groupLabel}>Support</Text>
-          <View style={styles.group}>
-            <MenuRow icon={<Phone size={18} color="#15803D" />} tint="#E6F4EA" label="Contact Pandit Ji" hint="Call or WhatsApp" onPress={onContactSupport} />
-            <MenuRow icon={<MessageCircle size={18} color={THEME.colors.primarySaffron} />} tint="#FDEBDD" label="Privacy policy" onPress={() => Linking.openURL(`${WEBSITE_URL}/privacy-policy`)} last />
+          <Text style={styles.groupTitle}>Help & Support</Text>
+          <View style={styles.menuBox}>
+            <MenuRow
+              icon={<Phone size={15} color="#15803D" />}
+              label="Contact Pandit Ji Helpline"
+              hint="Call or WhatsApp assistance"
+              onPress={onContactSupport}
+            />
+            <MenuRow
+              icon={<MessageCircle size={15} color={C.primarySaffron} />}
+              label="Privacy Policy"
+              onPress={() => Linking.openURL(`${WEBSITE_URL}/privacy-policy`)}
+              last
+            />
           </View>
 
-          <View style={[styles.group, styles.groupGap]}>
-            <MenuRow icon={<LogOut size={18} color={THEME.colors.heading} />} tint={THEME.colors.softPeach} label="Logout" onPress={confirmLogout} />
-            <MenuRow icon={<Trash2 size={18} color="#B91C1C" />} tint="#FEE2E2" label="Delete account" hint="Permanently remove your data" onPress={confirmDelete} danger last />
+          <View style={[styles.menuBox, styles.logoutGap]}>
+            <MenuRow
+              icon={<LogOut size={15} color="#2A170F" />}
+              label="Logout"
+              onPress={confirmLogout}
+            />
+            <MenuRow
+              icon={<Trash2 size={15} color="#DC2626" />}
+              label="Delete Account"
+              hint="Permanently remove your profile and data"
+              onPress={confirmDelete}
+              danger
+              last
+            />
           </View>
 
-          <Text style={styles.version}>VedRit v{version}</Text>
-          <Text style={styles.managedBy}>Managed by Urbexon Software Solutions LLP</Text>
+          <View style={styles.footerBranding}>
+            <Text style={styles.versionLine}>VedRit • v{version}</Text>
+            <Text style={styles.managedLine}>Managed by Urbexon Software Solutions LLP</Text>
+          </View>
         </View>
       </KeyboardAwareScrollView>
     </AppBackground>
@@ -495,112 +796,647 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ section, onSection
 const C = THEME.colors;
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingBottom: 48 },
-  hero: { marginHorizontal: SPACE.lg, marginTop: SPACE.sm, borderRadius: RADIUS.xl, padding: SPACE.lg },
-  heroTop: { flexDirection: 'row', alignItems: 'center', gap: SPACE.lg },
-  avatarWrap: { width: 92, height: 92 },
-  cameraBadge: {
+  content: { paddingBottom: 50 },
+
+  // TOP HEADER (SAFE FROM CAMERA CUTOUTS, CLEAN FONT)
+  topHeader: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 14 : 8,
+    paddingBottom: 8,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1C120C',
+    letterSpacing: -0.2,
+  },
+  screenSubtitle: {
+    fontSize: 12.5,
+    color: '#6E6053',
+    marginTop: 2,
+    fontWeight: '400',
+  },
+
+  // FLAT PROFILE CARD (NO SHADOWS, CLEAN BORDER)
+  profileSection: {
+    paddingHorizontal: 16,
+    marginTop: 6,
+  },
+  flatProfileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    padding: 16,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  avatarWrap: {
+    width: 72,
+    height: 72,
+    position: 'relative',
+  },
+  cameraIconBtn: {
     position: 'absolute',
     right: 0,
     bottom: 0,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#FFF',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: C.primarySaffron,
     borderWidth: 2,
-    borderColor: '#F59A45',
+    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroText: { flex: 1 },
-  heroName: { color: '#FFFFFF', fontSize: 21, fontWeight: '800', letterSpacing: -0.2 },
-  heroMeta: { color: 'rgba(255,255,255,0.9)', fontSize: 13, marginTop: 2 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  chip: { color: '#FFFFFF', fontSize: 11, fontWeight: '700', backgroundColor: 'rgba(255,255,255,0.22)', paddingHorizontal: 9, paddingVertical: 3, borderRadius: RADIUS.pill, overflow: 'hidden' },
-  completion: { marginTop: SPACE.lg, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: RADIUS.md, padding: SPACE.md },
-  completionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  completionLabel: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  completionAction: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  doneBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  doneText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
-  progressTrack: { height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)', overflow: 'hidden' },
-  progressFill: { height: 7, borderRadius: 4, backgroundColor: '#FFFFFF' },
-  completionHint: { color: 'rgba(255,255,255,0.88)', fontSize: 12, marginTop: 8 },
-  heroActions: { flexDirection: 'row', gap: SPACE.sm, marginTop: SPACE.md },
-  editBtn: { flex: 1, height: 44, borderRadius: RADIUS.pill, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  editText: { color: C.primarySaffron, fontWeight: '800', fontSize: 14 },
-  photoBtn: { height: 44, paddingHorizontal: 18, borderRadius: RADIUS.pill, borderWidth: 1, borderColor: 'rgba(255,255,255,0.7)', flexDirection: 'row', alignItems: 'center', gap: 7 },
-  photoText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
-  spiritualBanner: {
+  userInfoCol: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 18.5,
+    fontWeight: '700',
+    color: '#1C120C',
+  },
+  userPhone: {
+    fontSize: 13,
+    color: '#594D44',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  userVedicMeta: {
+    fontSize: 12,
+    color: '#786C60',
+    marginTop: 3,
+    fontWeight: '400',
+  },
+
+  // CARD ACTIONS (FLAT, CLEAN PILLS)
+  cardActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F2ECE4',
+  },
+  editBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: C.primarySaffron,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  editBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  photoBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#FAF6EE',
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  photoBtnText: {
+    color: C.primarySaffron,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+
+  // SADHANA STRIP (FLAT, CLEAN 4 STATS)
+  sadhanaSection: {
+    paddingHorizontal: 16,
+    marginTop: 10,
+  },
+  sadhanaCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    padding: 12,
+  },
+  sadhanaTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2ECE4',
+    marginBottom: 8,
+  },
+  sadhanaTitle: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#1C120C',
+  },
+  sadhanaSince: {
+    fontSize: 11,
+    color: '#786C60',
+    fontWeight: '400',
+  },
+  sadhanaColsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: '#FFF8F0',
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: '#FED7AA',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    marginHorizontal: SPACE.lg,
-    marginTop: SPACE.md,
   },
-  spiritualCol: {
+  sadhanaCol: {
     alignItems: 'center',
+    flex: 1,
   },
-  spiritualNum: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#9A3412',
+  sadhanaNum: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#1C120C',
+  },
+  sadhanaLabel: {
+    fontSize: 10,
+    color: '#786C60',
+    marginTop: 1,
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: 1,
+    height: 22,
+    backgroundColor: '#E8DFD5',
+  },
+
+  // VEDIC DETAILS (CLEAN 2x2 GRID, NO BADGES)
+  vedicSection: {
+    paddingHorizontal: 16,
+    marginTop: 10,
+  },
+  vedicCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    padding: 12,
+  },
+  vedicHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2ECE4',
+    marginBottom: 8,
+  },
+  vedicHeadTitle: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#1C120C',
+  },
+  vedicEditLink: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: C.primarySaffron,
+  },
+  vedicGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  vedicBox: {
+    width: '48.5%',
+    backgroundColor: '#FAF7F2',
+    borderRadius: 10,
+    padding: 8,
+  },
+  vedicBoxLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#786C60',
+    textTransform: 'uppercase',
+  },
+  vedicBoxValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1C120C',
     marginTop: 2,
   },
-  spiritualDesc: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#78350F',
+
+  // TABS (CLEAN, NO LOUD BADGES)
+  tabsWrapper: {
+    paddingHorizontal: 16,
+    marginTop: 12,
+  },
+  tabsBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    padding: 3,
+  },
+  tabItem: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 9,
+  },
+  tabItemActive: {
+    backgroundColor: C.primarySaffron,
+  },
+  tabItemText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#594D44',
+  },
+  tabItemTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+
+  // LIST AREA & FLAT CARDS
+  listArea: {
+    paddingHorizontal: 16,
+    marginTop: 10,
+  },
+  loader: {
+    marginVertical: 24,
+  },
+  flatItemCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    padding: 13,
+    marginBottom: 10,
+  },
+  itemConfirmed: {
+    borderLeftWidth: 3.5,
+    borderLeftColor: '#15803D',
+  },
+  itemCancelled: {
+    borderLeftWidth: 3.5,
+    borderLeftColor: '#DC2626',
+    opacity: 0.75,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  bookingRef: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: C.primarySaffron,
+  },
+  itemTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1C120C',
     marginTop: 1,
   },
-  spiritualDivider: {
-    width: 1,
-    height: 26,
-    backgroundColor: '#FDBA74',
+  itemMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 5,
   },
-  stats: { flexDirection: 'row', gap: SPACE.sm, paddingHorizontal: SPACE.lg, marginTop: SPACE.lg },
-  stat: { flex: 1, backgroundColor: '#FFF', borderRadius: RADIUS.lg, borderWidth: 1.5, borderColor: C.borderLight, alignItems: 'center', paddingVertical: SPACE.md, gap: 2 },
-  statActive: { borderColor: C.primarySaffron, backgroundColor: C.softSaffronBg },
-  statValue: { fontSize: 22, fontWeight: '800', color: C.heading, marginTop: 2 },
-  statLabel: TYPE.caption,
-  tabs: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: RADIUS.pill, padding: 4, marginHorizontal: SPACE.lg, marginTop: SPACE.lg, borderWidth: 1, borderColor: C.borderLight },
-  tabActive: { backgroundColor: C.primarySaffron, borderRadius: RADIUS.pill },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center' },
-  tabText: { fontSize: 13, fontWeight: '700', color: C.bodyText },
-  tabTextActive: { color: '#FFF' },
-  listArea: { paddingHorizontal: SPACE.lg, marginTop: SPACE.lg },
-  loader: { marginVertical: 30 },
-  item: { marginBottom: 12 },
-  itemHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
-  itemTitle: { fontSize: 15, fontWeight: '800', color: C.heading, flex: 1 },
-  itemMeta: { fontSize: 12.5, color: C.bodyText, marginTop: 2 },
-  note: { fontSize: 12.5, color: C.deepTerracotta, marginTop: 8 },
-  cancelNote: { fontSize: 12.5, color: '#991B1B', marginTop: 8 },
-  response: { backgroundColor: C.softSaffronBg, borderRadius: 12, padding: 12, marginTop: 10 },
-  responseTitle: { fontSize: 13, fontWeight: '800', color: C.primarySaffron, marginBottom: 4 },
-  responseText: { fontSize: 14, color: C.heading, lineHeight: 20 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  flexBtn: { flex: 1, minHeight: 42 },
-  action: { marginTop: 10, minHeight: 42 },
-  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  memberIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.softSaffronBg, alignItems: 'center', justifyContent: 'center' },
-  iconBtn: { padding: 8 },
-  muted: { fontSize: 13, color: C.mutedText, marginBottom: 12 },
-  groupLabel: { ...TYPE.label, color: C.mutedText, marginHorizontal: SPACE.lg, marginTop: SPACE.xl, marginBottom: SPACE.sm },
-  group: { backgroundColor: '#FFF', borderRadius: RADIUS.lg, marginHorizontal: SPACE.lg, borderWidth: 1, borderColor: C.borderLight, overflow: 'hidden' },
-  groupGap: { marginTop: SPACE.lg },
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: SPACE.md, paddingHorizontal: SPACE.md, paddingVertical: 13 },
-  menuRowBorder: { borderBottomWidth: 1, borderBottomColor: C.borderLight },
-  menuIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  menuText: { fontSize: 15, fontWeight: '700', color: C.heading },
-  menuHint: { ...TYPE.caption, marginTop: 1 },
-  dangerText: { color: '#B91C1C' },
-  version: { ...TYPE.caption, textAlign: 'center', marginTop: SPACE.xl },
-  managedBy: { ...TYPE.caption, textAlign: 'center', marginTop: 4, fontSize: 11, color: C.mutedText },
+  itemMetaText: {
+    fontSize: 11.5,
+    color: '#786C60',
+    fontWeight: '400',
+  },
+  itemMetaTag: {
+    fontSize: 11,
+    color: '#8A4A1C',
+    backgroundColor: '#FFF4E8',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    fontWeight: '500',
+  },
+  priceStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F2ECE4',
+    paddingTop: 8,
+    marginTop: 8,
+  },
+  priceAmount: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1C120C',
+  },
+  priceStatus: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#594D44',
+  },
+  panditNoteBox: {
+    backgroundColor: '#FFF8F0',
+    borderRadius: 8,
+    padding: 7,
+    marginTop: 6,
+  },
+  panditNoteText: {
+    fontSize: 11.5,
+    color: '#8A4A1C',
+    lineHeight: 16,
+  },
+  cancelText: {
+    fontSize: 11,
+    color: '#DC2626',
+    marginTop: 4,
+  },
+  videoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#7C3AED',
+    borderRadius: 8,
+    paddingVertical: 8,
+    marginTop: 8,
+  },
+  videoButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  flexBtn: {
+    flex: 1,
+    minHeight: 36,
+  },
+  singleActionBtn: {
+    marginTop: 8,
+    minHeight: 36,
+  },
+
+  // ORDER SPECIFIC
+  orderListBox: {
+    backgroundColor: '#FAF7F2',
+    borderRadius: 8,
+    padding: 6,
+    marginTop: 6,
+  },
+  orderItemLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 1,
+  },
+  orderItemName: {
+    fontSize: 11.5,
+    color: '#2A170F',
+    flex: 1,
+  },
+  orderItemQty: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: C.primarySaffron,
+  },
+  trackingLine: {
+    fontSize: 11,
+    color: '#15803D',
+    marginTop: 5,
+  },
+
+  // KUNDLI SPECIFIC
+  questionBox: {
+    backgroundColor: '#F7F4EF',
+    borderRadius: 6,
+    padding: 6,
+    marginTop: 6,
+  },
+  questionText: {
+    fontSize: 11.5,
+    color: '#4A3E34',
+    fontStyle: 'italic',
+  },
+  panditResponseCard: {
+    backgroundColor: '#FFFBF5',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#F0E2D0',
+  },
+  panditResponseHead: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#8A4A1C',
+  },
+  panditResponseText: {
+    fontSize: 12,
+    color: '#2A170F',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  awaitingText: {
+    fontSize: 11,
+    color: '#786C60',
+    marginTop: 6,
+  },
+
+  // FAMILY SPECIFIC
+  familyWrapper: {
+    marginTop: 2,
+  },
+  blockHeading: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1C120C',
+  },
+  blockSubtitle: {
+    fontSize: 11.5,
+    color: '#786C60',
+    marginBottom: 8,
+  },
+  memberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    marginBottom: 6,
+  },
+  memberAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF4E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C120C',
+  },
+  memberMeta: {
+    fontSize: 11,
+    color: '#786C60',
+    marginTop: 1,
+  },
+  deleteBtn: {
+    padding: 6,
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C120C',
+  },
+  emptySub: {
+    fontSize: 11,
+    color: '#786C60',
+    marginTop: 2,
+  },
+  addMemberBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    padding: 12,
+  },
+  addMemberTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C120C',
+    marginBottom: 8,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#594D44',
+    marginBottom: 4,
+    marginTop: 2,
+  },
+  relationsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+    marginBottom: 10,
+  },
+  relPill: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+  },
+  relPillActive: {
+    backgroundColor: C.primarySaffron,
+    borderColor: C.primarySaffron,
+  },
+  relPillText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#594D44',
+  },
+  relPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  addSubmitBtn: {
+    marginTop: 6,
+  },
+
+  // SETTINGS & MENU (iOS-STYLE FLAT GROUP)
+  menuContainer: {
+    marginTop: 10,
+  },
+  groupTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#786C60',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  menuBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E8DFD5',
+    overflow: 'hidden',
+  },
+  logoutGap: {
+    marginTop: 10,
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  menuRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2ECE4',
+  },
+  menuIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: '#FAF7F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#1C120C',
+  },
+  menuHint: {
+    fontSize: 10.5,
+    color: '#786C60',
+    marginTop: 1,
+  },
+  dangerText: {
+    color: '#DC2626',
+  },
+
+  // FOOTER
+  footerBranding: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  versionLine: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#9E9185',
+  },
+  managedLine: {
+    fontSize: 10,
+    color: '#9E9185',
+    marginTop: 2,
+  },
 });
