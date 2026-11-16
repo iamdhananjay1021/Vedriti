@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import { ArrowLeft, Check, Eye, EyeOff, Lock, Mail, Smartphone } from 'lucide-react-native';
 import { BrandLogo } from '../components/common/BrandLogo';
+import { GoogleIcon } from '../components/common/GoogleIcon';
 import { useKeyboardInset } from '../hooks/useKeyboardInset';
 import { OtpInput } from '../components/ui/OtpInput';
 import { api } from '../services/api';
@@ -300,6 +301,23 @@ export const LoginScreen: React.FC = () => {
 
       <View style={styles.actions}>{mode === 'password' ? primaryButton('Login', () => submit()) : primaryButton('Send code', sendCode)}</View>
 
+      {mode === 'otp' || mode === 'password' || mode === 'signup' ? (
+        <>
+          <View style={styles.orRow}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>or</Text>
+            <View style={styles.orLine} />
+          </View>
+          <View style={styles.googleBtn} accessibilityRole="button" accessibilityState={{ disabled: true }} accessibilityLabel="Continue with Google, coming soon">
+            <GoogleIcon size={22} />
+            <Text style={styles.googleText}>Continue with Google</Text>
+            <View style={styles.soonPill}>
+              <Text style={styles.soonText}>Coming soon</Text>
+            </View>
+          </View>
+        </>
+      ) : null}
+
       {mode === 'otp' || mode === 'password' ? (
         <TouchableOpacity style={styles.switchRow} onPress={() => switchMode(mode === 'otp' ? 'password' : 'otp')}>
           <Lock size={14} color="rgba(255,255,255,0.85)" />
@@ -385,11 +403,30 @@ const styles = StyleSheet.create({
   button: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   buttonBusy: { opacity: 0.8 },
   buttonText: { color: WHITE, fontSize: 18, fontWeight: '800' },
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 16 },
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
+  orLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.25)' },
+  orText: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600' },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    height: 52,
+    marginTop: 14,
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255,255,255,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12,
+  },
+  googleText: { color: WHITE, fontSize: 15, fontWeight: '700' },
+  soonPill: { backgroundColor: 'rgba(247,213,139,0.95)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  soonText: { color: '#6B2A0F', fontSize: 10.5, fontWeight: '800' },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 14 },
   linkText: { color: 'rgba(255,255,255,0.92)', fontSize: 14, fontWeight: '600' },
   boldLink: { color: WHITE, fontSize: 14.5, fontWeight: '800' },
   linkDisabled: { color: 'rgba(255,255,255,0.55)' },
-  resend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  resend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 14 },
   muted: { color: 'rgba(255,255,255,0.9)', fontSize: 14.5 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 16 },
   backText: { color: WHITE, fontSize: 14, fontWeight: '700' },
