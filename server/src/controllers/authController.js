@@ -13,9 +13,11 @@ const phoneField = z.string().trim().min(10, 'Please enter a valid 10-digit mobi
 
 export const EmailOtpRequestSchema = z.object({ email: emailField });
 
-export const LoginOtpRequestSchema = z.object({ email: emailField, phone: phoneField });
+const optionalPhone = z.string().trim().max(16).optional();
 
-export const EmailOtpVerifySchema = z.object({ email: emailField, phone: phoneField, otp: otpField, name: trimmed(80).optional() });
+export const LoginOtpRequestSchema = z.object({ email: emailField, phone: optionalPhone });
+
+export const EmailOtpVerifySchema = z.object({ email: emailField, phone: optionalPhone, otp: otpField, name: trimmed(80).optional() });
 
 export const EmailSignupSchema = z.object({
   email: emailField,

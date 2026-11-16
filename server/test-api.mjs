@@ -42,7 +42,7 @@ const run = async () => {
   const phone = `9${String(Date.now()).slice(-9)}`;
   const userEmail = `user${Date.now()}@example.com`;
   const noPhone = await call('POST', '/auth/email/request-otp', { body: { email: userEmail } });
-  check('login code requires mobile number', noPhone.status === 400, noPhone.json);
+  check('new email without mobile is asked to sign up', noPhone.status === 404, noPhone.json);
   const badPhone = await call('POST', '/auth/email/request-otp', { body: { email: userEmail, phone: '12345' } });
   check('invalid mobile rejected', badPhone.status === 400, badPhone.json);
   const otpReq = await call('POST', '/auth/email/request-otp', { body: { email: userEmail, phone } });
@@ -55,6 +55,10 @@ const run = async () => {
   const verify = await call('POST', '/auth/email/verify-otp', { body: { email: userEmail, phone, otp: code } });
   check('verify email otp', verify.status === 200 && verify.json.data.isNewUser && verify.json.data.user.phone && verify.json.data.user.email === userEmail, verify.json);
   const token = verify.json.data.token;
+  const again = await call('POST', '/auth/email/request-otp', { body: { email: userEmail } });
+  check('existing user can request code with email only', again.status === 200 && again.json.data.isNewUser === false, again.json);
+  const againVerify = await call('POST', '/auth/email/verify-otp', { body: { email: userEmail, otp: again.json.data?.devOtp } });
+  check('existing user logs in with email code only', againVerify.status === 200 && againVerify.json.data.isNewUser === false, againVerify.json);
 
   const date = await nextOpenDate(puja.id);
   check('calendar has open date', Boolean(date));

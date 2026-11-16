@@ -135,24 +135,34 @@ const checkIdentity = async (email, phone) => {
   return byEmail;
 };
 
+const resolveLogin = async (email, rawPhone) => {
+  const given = String(rawPhone || '').trim();
+  const existing = await User.findOne({ email }).select('phone isBlocked');
+  if (!existing && !given) {
+    throw new AppError('No account found with this email. Please sign up with your email and mobile number.', 404);
+  }
+  const phone = given ? requirePhone(given) : existing?.phone || '';
+  if (phone) await checkIdentity(email, phone);
+  else if (existing?.isBlocked) throw new AppError(BLOCKED_MESSAGE, 403);
+  return { existing, phone };
+};
+
 export const requestEmailOtp = async (rawEmail, rawPhone) => {
   const email = cleanEmail(rawEmail);
-  const phone = requirePhone(rawPhone);
-  const existing = await checkIdentity(email, phone);
+  const { existing, phone } = await resolveLogin(email, rawPhone);
   const result = await issueOtp({ channel: 'email', target: email, purpose: 'login' });
   return { email, phone, isNewUser: !existing, ...result };
 };
 
 export const verifyEmailOtp = async (rawEmail, rawPhone, code, name) => {
   const email = cleanEmail(rawEmail);
-  const phone = requirePhone(rawPhone);
-  await checkIdentity(email, phone);
+  const { phone } = await resolveLogin(email, rawPhone);
   await consumeOtp({ channel: 'email', target: email, purpose: 'login', code });
   const { user, isNewUser } = await findOrCreate(
     { email },
-    { email, phone, authProvider: 'email', emailVerified: true, name: name?.trim() || '' }
+    { email, ...(phone ? { phone } : {}), authProvider: 'email', emailVerified: true, name: name?.trim() || '' }
   );
-  if (!user.phone) user.phone = phone;
+  if (!user.phone && phone) user.phone = phone;
   if (!user.emailVerified) user.emailVerified = true;
   return authResult(user, isNewUser);
 };
